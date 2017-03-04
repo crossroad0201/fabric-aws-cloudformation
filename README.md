@@ -1,17 +1,24 @@
 This repository in sandbox now.
 **Do not use in your product develoment.**
 
-## Setup
+# Setup
 
-'''bash
+## Instal
+
+```bash
 pip install git+https://github.com/crossroad0201/fabric-awscfn-sandbox.git
-'''
+```
 
 ## Uninstall
 
-'''bach
+```bach
 pip uninstall fabricawscfn
-'''
+```
+
+# Usage
+
+See [Example fabfile.py](./example/fabfile.py).
+
 
 # Links
 
