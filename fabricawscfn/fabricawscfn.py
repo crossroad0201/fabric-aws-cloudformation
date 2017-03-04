@@ -27,6 +27,7 @@ class StackGroup(object):
     self.__add_fabric_task('ls_stacks', self.ls_stacks)
     self.__add_fabric_task('desc_stack', self.desc_stack)
     self.__add_fabric_task('ls_resources', self.ls_resources)
+    self.__add_fabric_task('ls_exports', self.ls_exports)
 
     # Init boto3 clients.
     self.cfn_client = boto3.client('cloudformation')
@@ -66,7 +67,7 @@ class StackGroup(object):
 
   def params(self, **kwparams):
     '''
-    Set parameters. (Given all tasks)
+    Set parameters. (Applies to all tasks)
 
     :param kwparams: parameters.
     '''
@@ -194,6 +195,10 @@ class StackGroup(object):
         ])
       print(table)
 
+  # TODO Bulk create all stacks.
+  # TODO Bulk update all stacks.
+  # TODO Bulk delete all stacks.
+
   def ls_resources(self):
     '''
     List existing stack resources.
@@ -233,6 +238,37 @@ class StackGroup(object):
 
     print(blue('Resrouces:', bold = True))
     print(table)
+
+  def ls_exports(self):
+    '''
+    List exports.
+    '''
+
+    def get_exported_stack_name(export):
+      exportingStackId = export['ExportingStackId']
+      for stack_def in self.stack_defs.values():
+        stack_name = stack_def.actual_stack_name()
+        if stack_name in exportingStackId:
+          return stack_name
+      return None
+
+    exports = self.cfn_client.list_exports()
+
+    table = PrettyTable(['ExportedStackName', 'ExportName', 'ExportValue'])
+    table.align['ExportedStackName'] = 'l'
+    table.align['ExportName'] = 'l'
+    table.align['ExportValue'] = 'l'
+    for export in exports['Exports']:
+      exported_stack_name = get_exported_stack_name(export)
+      if exported_stack_name is not None:
+        table.add_row([
+          exported_stack_name,
+          export['Name'],
+          export['Value']
+        ])
+    print(blue('Exports:', bold = True))
+    print(table)
+
 
 class StackDef(object):
   def __init__(self, stack_group, stack_alias, stack_name, template_path, **kwargs):
@@ -362,8 +398,9 @@ class StackDef(object):
         'ParameterValue': param_value
       })
 
-    print('Update stack.')
+    # TODO Confirm update.
 
+    print('Update stack.')
     try:
       stack.update(
         TemplateURL = self.template_s3_url(),
