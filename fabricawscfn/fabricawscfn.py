@@ -235,11 +235,12 @@ class StackGroup(object):
     print(table)
 
 class StackDef(object):
-  def __init__(self, stack_group, stack_alias, stack_name, template_path):
+  def __init__(self, stack_group, stack_alias, stack_name, template_path, **kwargs):
     self.stack_group = stack_group
     self.stack_alias = stack_alias
     self.stack_name = stack_name
     self.template_path = template_path
+    self.kwargs = kwargs
 
   def actual_stack_name(self):
     return self.stack_name % env
@@ -298,7 +299,8 @@ class StackDef(object):
     self.stack_group.cfn_resource.create_stack(
       StackName = self.actual_stack_name(),
       TemplateURL = self.template_s3_url(),
-      Parameters = params
+      Parameters = params,
+      **self.kwargs
     )
 
     # Wait create complete.
@@ -365,7 +367,8 @@ class StackDef(object):
     try:
       stack.update(
         TemplateURL = self.template_s3_url(),
-        Parameters = params
+        Parameters = params,
+        **self.kwargs
       )
     except botocore.exceptions.ClientError as e:
       if 'No updates are to be performed' in e.args[0]:
