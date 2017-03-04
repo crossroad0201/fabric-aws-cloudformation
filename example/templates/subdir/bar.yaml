@@ -3,6 +3,8 @@ Description: Bar bucket.
 Parameters:
   EnvName:
     Type: String
+    Description: Environmanet name.
+    Default: dev
 Outputs:
   Bucket:
     Description: Bar bucket.

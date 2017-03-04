@@ -9,12 +9,17 @@ from fabric.api import *
 
 from fabricawscfn import *
 
-env.env_name = 'dev'
-
-StackGroup(globals(), 'crossroad0201-fabricawscfn', 'example/%(env_name)s', 'templates')\
-  .define_stack('foo', 'fabricawscfn-%(env_name)s-foo', 'foo.yaml')\
-  .define_stack('bar', 'fabricawscfn-%(env_name)s-bar', 'subdir/bar.yaml')
-
+env.EnvName = 'dev'
 @task
 def env_on(env_name):
-  env.env_name = env_name
+  '''
+  Set environment.(Default dev)
+
+  :param env_name: Environment name.
+  '''
+  env.EnvName = env_name
+
+StackGroup(globals(), 'crossroad0201-fabricawscfn', 'example/%(EnvName)s', 'templates')\
+  .define_stack('foo', 'fabricawscfn-%(EnvName)s-foo', 'foo.yaml')\
+  .define_stack('bar', 'fabricawscfn-%(EnvName)s-bar', 'subdir/bar.yaml')
+
