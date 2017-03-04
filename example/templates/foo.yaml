@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Foo bucket.
+Parameters:
+  EnvName:
+    Type: String
+  Param1:
+    Type: String
+  Param2:
+    Type: String
+    Default: PARAM2
+  Param3:
+    Type: String
+    Description: None default parameter.
+  Param4:
+    Type: String
+    Description: With default parameter.
+    Default: PARAM4
+Outputs:
+  Bucket:
+    Description: Foo bucket.
+    Value:
+      Ref: Bucket
+    Export:
+      Name:
+        Fn::Sub: foo-bucket-${EnvName}
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: sandbox-${EnvName}-foo

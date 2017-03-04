@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Bar bucket.
+Parameters:
+  EnvName:
+    Type: String
+Outputs:
+  Bucket:
+    Description: Bar bucket.
+    Value:
+      Ref: Bucket
+    Export:
+      Name:
+        Fn::Sub: bar-bucket-${EnvName}
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: sandbox-${EnvName}-bar
