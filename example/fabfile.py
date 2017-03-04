@@ -2,12 +2,11 @@
 from __future__ import print_function
 
 from fabric.api import *
-# from fabric.operations import *
-# from fabric.utils import *
 
+## Import from local dir.
+# import sys
+# sys.path.append('../fabricawscfn')
 
-import sys
-sys.path.append('../fabricawscfn')
 from fabricawscfn import *
 
 env.env_name = 'dev'
