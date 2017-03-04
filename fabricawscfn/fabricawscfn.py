@@ -43,6 +43,27 @@ class StackGroup(object):
   def actual_templates_s3_prefix(self):
     return self.templates_s3_prefix % env
 
+  def define_stack(self, alias, stack_name, template_path, **kwargs):
+    '''
+    Define stack.
+
+    :param alias: Stack alias.
+    :param stack_name: Stack name.(allow placeholder. will be replace by env.)
+    :param template_path: Template file relative path.
+    :param kwargs: Optional stack arguments.
+    :return: self
+    '''
+    stack_def = StackDef(self, alias, stack_name, template_path, **kwargs)
+    self.stack_defs[alias] = stack_def
+
+    for operation in stack_def.get_stack_operations():
+      operation_name = operation.__name__
+      operation.__func__.__doc__ = '%s stack %s.' % (operation_name, alias)
+      task_name = '%s_%s' % (operation_name, alias)
+      self.__add_fabric_task(task_name, operation)
+
+    return self
+
   def params(self, **kwparams):
     '''
     Set parameters. (Given all tasks)
@@ -212,26 +233,6 @@ class StackGroup(object):
 
     print(blue('Resrouces:', bold = True))
     print(table)
-
-  def define_stack(self, alias, stack_name, template_path):
-    '''
-    Define stack.
-
-    :param alias: Stack alias.
-    :param stack_name: Stack name.(allow placeholder. will be replace by env.)
-    :param template_path: Template file relative path.
-    :return: self
-    '''
-    stack_def = StackDef(self, alias, stack_name, template_path)
-    self.stack_defs[alias] = stack_def
-
-    for operation in stack_def.get_stack_operations():
-      operation_name = operation.__name__
-      operation.__func__.__doc__ = '%s stack %s.' % (operation_name, alias)
-      task_name = '%s_%s' % (operation_name, alias)
-      self.__add_fabric_task(task_name, operation)
-
-    return self
 
 class StackDef(object):
   def __init__(self, stack_group, stack_alias, stack_name, template_path):
