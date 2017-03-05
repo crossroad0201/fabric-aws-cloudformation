@@ -32,17 +32,19 @@ pip uninstall fabricawscfn
 
 # Usage
 
-## Preparation
+## 1.Preparation
 
 * Create S3 bucket for store CloudFormation templates.
 
-## Import `fabricawscfn` in your `fabfile.py`.
+## 2.Import Fabric AWS CloudFormation.
+
+Import `fabricawscfn` in your `fabfile.py`.
 
 ```python
 from fabricawscfn import *
 ```
 
-## Define stacks and generate Fabric tasks.
+## 3.Define stacks and generate Fabric tasks.
 
 ```python
 StackGroup('my-cfn-templates', 'example', 'templates')\
@@ -51,7 +53,7 @@ StackGroup('my-cfn-templates', 'example', 'templates')\
   .generate_task(globals())
 ```
 
-### Create StackGroup
+### 3-1.Create StackGroup
 
 Instantiate `StackGroup`.
 
@@ -62,7 +64,7 @@ Instantiate `StackGroup`.
 
 * `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
 
-### Define Stack
+### 3-2.Define Stack
 
 Define Stack(s) using `StackGroup#define_task()`.
 
@@ -74,14 +76,14 @@ Define Stack(s) using `StackGroup#define_task()`.
 
 * `stack_name` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
 
-### Generate Task
+### 3-3.Generate Task
 
 Generate Fabric tasks using `StackGroup#generate_task()`.
 
 * Parameters.
   * `namespace` - Generated tasks added to this namespace. Normaly specify 'globals()'.
 
-## Finish
+## 4.Finish
 
 You can check generated tasks run `fab -l` comand.
 
@@ -109,6 +111,8 @@ Available commands:
 See [Example fabfile.py](./example/fabfile.py).
 
 ## Basic Tasks.
+
+Show available all tasks run `fab -l`, and more detail `fab -d [TASK_NAME]`.
 
 ### `ls_stacks`
 
