@@ -19,7 +19,8 @@ def env_on(env_name):
   '''
   env.EnvName = env_name
 
-StackGroup(globals(), 'crossroad0201-fabricawscfn', 'example/%(EnvName)s', 'templates')\
+StackGroup('crossroad0201-fabricawscfn', 'example/%(EnvName)s', 'templates')\
   .define_stack('foo', 'fabricawscfn-%(EnvName)s-foo', 'foo.yaml')\
-  .define_stack('bar', 'fabricawscfn-%(EnvName)s-bar', 'subdir/bar.yaml', Tags=[{'Key':'example', 'Value':'EXAMPLE'}])
+  .define_stack('bar', 'fabricawscfn-%(EnvName)s-bar', 'subdir/bar.yaml', Tags=[{'Key':'example', 'Value':'EXAMPLE'}])\
+  .generate_task(globals())
 

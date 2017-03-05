@@ -12,31 +12,28 @@ from fabric.utils import *
 from fabric.colors import green, blue, yellow, red
 
 class StackGroup(object):
-  def __init__(self, namespace, templates_s3_bucket, templates_s3_prefix, templates_local_dir = '.'):
+  def __init__(self, templates_s3_bucket, templates_s3_prefix, templates_local_dir = '.'):
+    '''
+    Create StackGroup.
+
+    :param templates_s3_bucket: S3 bucket name for templates. (allow placeholder. will be replace by env.)
+    :param templates_s3_prefix: S3 prefix(folder) for templates. (allow placeholder. will be replace by env.)
+    :param templates_local_dir: Local dir for templates.
+    '''
     # {Stack Alias, StackDef}
     self.stack_defs = OrderedDict()
-    self.namespace = namespace
     self.templates_s3_bucket = templates_s3_bucket
     self.templates_s3_prefix = templates_s3_prefix
     self.templates_local_dir = templates_local_dir
-
-    # Add general tasks.
-    self.__add_fabric_task('params', self.params)
-    self.__add_fabric_task('validate_template', self.validate_template)
-    self.__add_fabric_task('sync_templates', self.sync_templates)
-    self.__add_fabric_task('ls_stacks', self.ls_stacks)
-    self.__add_fabric_task('desc_stack', self.desc_stack)
-    self.__add_fabric_task('ls_resources', self.ls_resources)
-    self.__add_fabric_task('ls_exports', self.ls_exports)
 
     # Init boto3 clients.
     self.cfn_client = boto3.client('cloudformation')
     self.cfn_resource = boto3.resource('cloudformation')
 
-  def __add_fabric_task(self, task_name, task_method):
+  def __add_fabric_task(self, namespace, task_name, task_method):
     wrapper = task(name = task_name)
     rand = '%d' % (time.time() * 100000)
-    self.namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
+    namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
 
   def actual_templates_s3_bucket(self):
     return self.templates_s3_bucket % env
@@ -57,11 +54,31 @@ class StackGroup(object):
     stack_def = StackDef(self, alias, stack_name, template_path, **kwargs)
     self.stack_defs[alias] = stack_def
 
-    for operation in stack_def.get_stack_operations():
-      operation_name = operation.__name__
-      operation.__func__.__doc__ = '%s stack %s.' % (operation_name, alias)
-      task_name = '%s_%s' % (operation_name, alias)
-      self.__add_fabric_task(task_name, operation)
+    return self
+
+  def generate_task(self, namespace):
+    '''
+    Generate Fabric task for defined Stack(s).
+
+    :param namespace: Task add to.
+    :return: self
+    '''
+    # Add general tasks.
+    self.__add_fabric_task(namespace, 'params', self.params)
+    self.__add_fabric_task(namespace, 'validate_template', self.validate_template)
+    self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates)
+    self.__add_fabric_task(namespace, 'ls_stacks', self.ls_stacks)
+    self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack)
+    self.__add_fabric_task(namespace, 'ls_resources', self.ls_resources)
+    self.__add_fabric_task(namespace, 'ls_exports', self.ls_exports)
+
+    # Add stack tasks.
+    for stack_def in self.stack_defs.values():
+      for operation in stack_def.get_stack_operations():
+        operation_name = operation.__name__
+        operation.__func__.__doc__ = '%s stack %s.' % (operation_name, stack_def.stack_alias)
+        task_name = '%s_%s' % (operation_name, stack_def.stack_alias)
+        self.__add_fabric_task(namespace, task_name, operation)
 
     return self
 
@@ -112,6 +129,7 @@ class StackGroup(object):
       }
     )
 
+    # TODO Refactoring.
     defined_stack_names = Set()
     defined_stack_aliases = {}
     for stack_def in self.stack_defs.values():
