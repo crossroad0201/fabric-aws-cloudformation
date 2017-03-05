@@ -64,22 +64,22 @@ Instantiate `StackGroup`.
 
 ### Define Stack
 
-Define Stack using 'StackGroup#define_task()'.
+Define Stack(s) using `StackGroup#define_task()`.
 
 * Parameters.
   * `alias` - Alias(Short name) of Stack. This name is using task parameter.
   * `stack_name` - CloudFormation Stack name.
   * `template_path` - Template file path.(Relative path from 'templates_local_dir')
-  * ``**kwargs` - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
+  * `**kwargs` - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
 
 * `stack_name` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
 
 ### Generate Task
 
-Generate Fabric tasks using 'StackGroup#generate_task()'.
+Generate Fabric tasks using `StackGroup#generate_task()`.
 
 * Parameters.
-  * 'namespace' - Generated tasks added to this namespace. Normaly specify 'globals()'.
+  * `namespace` - Generated tasks added to this namespace. Normaly specify 'globals()'.
 
 ## Finish
 
@@ -104,7 +104,7 @@ Available commands:
     validate_template  Validate template on local dir.
 ```
 
-# Example
+# Tasks
 
 See [Example fabfile.py](./example/fabfile.py).
 
@@ -229,14 +229,3 @@ $ fab params:Param1=PARAM1,Param2=PARAM2 create_xxxx create_yyyy
 ```bash
 fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy ls_stacks ls_resources ls_exports
 ```
-
-# Links
-
-* [Fabric](http://www.fabfile.org)
-* [bot3 CloudFormation](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html)
-
-* [一歩すすんだ Fabric のタスク定義のしかた](https://nulab-inc.com/ja/blog/backlog/fabric-advanced/)
-* [Python製デプロイツール Fabricを初めて使う際に役立つTip](http://dekokun.github.io/posts/2013-04-07.html)
-
-* [GithubにPythonのライブラリをあげてpipでインストールする](http://blog.junion.org/pip-github-test/)
-* [Pythonによる CLI ツールの実装と配布](http://developer.wonderpla.net/entry/blog/engineer/python_cli_tool_implementation_and_distribution/)
