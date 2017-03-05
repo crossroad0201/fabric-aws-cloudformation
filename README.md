@@ -3,14 +3,22 @@ Fabric AWS CloudFormation
 
 A Python library that generates [Fabric](http://www.fabfile.org) tasks to manipulate the stack of AWS CloudFormation.
 
+You will be able to manipulate the CloudFormation stack with the CUI.
+
 **This repository in sandbox now.**
 **Do not use in your product development.**
 
 # Setup
 
+## Requirement
+
+* Python
+* [Fabric](http://www.fabfile.org)
+* [AWS CLI](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-set-up.html)
+
 ## Install
 
-Install 'fabricawscf'([and dependencies](./setup.py)) via pip.
+Install 'fabricawscf'([and Dependencies](./setup.py)) via pip.
 
 ```bash
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
@@ -75,7 +83,7 @@ Generate Fabric tasks using 'StackGroup#generate_task()'.
 
 ## Finish
 
-You can check generated tasks run 'fab -l' comand.
+You can check generated tasks run `fab -l` comand.
 
 ```bash
 $ fab -l
@@ -102,7 +110,7 @@ See [Example fabfile.py](./example/fabfile.py).
 
 ## Basic Tasks.
 
-### 'ls_stacks'
+### `ls_stacks`
 
 Show stacks list.
 
@@ -117,9 +125,9 @@ Stacks:
 +------------+----------------------+-----------------+----------------------------------+-------------+-------------+
 ```
 
-### 'desc_stack:xxx'
+### `desc_stack:[ALIAS]`
 
-Show stack detail(Parameters, Outputs, Events).
+Show stack detail.
 
 ```bash
 $ fab desc_stack:foo
@@ -157,7 +165,7 @@ Events(last 20):
 +----------------------------------+--------------------+----------------------------+----------------------+-----------------------------+
 ```
 
-### 'validate_template'
+### `validate_template:[ALIAS]`
 
 Validate CloudFormation template.
 
@@ -178,7 +186,7 @@ Validating template templates/subdir/bar.yaml...
 |+--------------+----------------------+---------+----------------+|
 ```
 
-### 'sync_templates'
+### `sync_templates`
 
 Upload CloudFormation templates to S3 bucket.
 
@@ -189,11 +197,11 @@ Synchronizing templates local templates to s3://crossroad0201-fabricawscfn/examp
 upload: templates\foo.yaml to s3://crossroad0201-fabricawscfn/example/dev/foo.yaml
 ```
 
-### 'crate_xxx'
+### `crate_[ALIAS]`
 
 Create new stack.
 
-You can specify Stack parameter(s) via task parameter.(Like this '$ fab create_xxx:Param1=PARAM1,Param2=PARAM2')
+You can specify Stack parameter(s) via task parameter.(Like this `$ fab create_xxx:Param1=PARAM1,Param2=PARAM2`)
 If parameters are not specified by task parameter, prompt will be displayed and input will be prompted.
 
 ```bash
@@ -208,12 +216,18 @@ Finish.
 
 ## Optional Tasks
 
-### 'params'
+### `params`
 
 Specify Stack parameters bulkly.
 
 ```bash
 $ fab params:Param1=PARAM1,Param2=PARAM2 create_xxxx create_yyyy
+```
+
+## One liner
+
+```bash
+fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy ls_stacks ls_resources ls_exports
 ```
 
 # Links
