@@ -136,6 +136,13 @@ class StackGroup(object):
       defined_stack_names.add(stack_def.actual_stack_name())
       defined_stack_aliases[stack_def.actual_stack_name()] = stack_def.stack_alias
 
+    def is_in_stack_group(stack_name):
+      for defined_stack_name in defined_stack_names:
+        # If stack name matches forward, it's in this stack group.(for Chaining stacks)
+        if stack_name.startswith(defined_stack_name):
+          return True
+      return False
+
     table = PrettyTable(['StackAlias', 'StackName', 'Status', 'CreatedTime', 'UpdatedTime', 'Description'])
     table.align['StackAlias'] = 'l'
     table.align['StackName'] = 'l'
@@ -146,7 +153,7 @@ class StackGroup(object):
       summaries = page['StackSummaries']
       for summary in summaries:
         stack_name = summary['StackName']
-        if stack_name in defined_stack_names: # Filter stacks by defined stack name.
+        if is_in_stack_group(stack_name):
           table.add_row([
             defined_stack_aliases.pop(stack_name), # pop!
             stack_name,
@@ -266,7 +273,7 @@ class StackGroup(object):
       exportingStackId = export['ExportingStackId']
       for stack_def in self.stack_defs.values():
         stack_name = stack_def.actual_stack_name()
-        if stack_name in exportingStackId:
+        if stack_name in exportingStackId: # Contains stack name in exporting stack name.
           return stack_name
       return None
 
