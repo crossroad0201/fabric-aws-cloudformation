@@ -18,7 +18,7 @@ You will be able to manipulate the CloudFormation stack with the CUI.
 
 ## Install
 
-Install 'fabricawscf'([and Dependencies](./setup.py)) via pip.
+Install `fabricawscf`([and Dependencies](./setup.py)) via pip.
 
 ```bash
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
@@ -36,7 +36,7 @@ pip uninstall fabricawscfn
 
 * Create S3 bucket for store CloudFormation templates.
 
-## Import 'fabricawscfn' in your 'fabfile.py'.
+## Import `fabricawscfn` in your `fabfile.py`.
 
 ```python
 from fabricawscfn import *
@@ -53,26 +53,26 @@ StackGroup('my-cfn-templates', 'example', 'templates')\
 
 ### Create StackGroup
 
-Instantiate 'StackGroup'.
+Instantiate `StackGroup`.
 
 * Parameters.
-  * 'templates_s3_bucket' - Prepared S3 bucket name.
-  * 'templates_s3_prefix' - Prefix(Folder) name in Prepared S3 bucket. CloudFormation templates store in.
-  * 'templates_local_dir'(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) stored.
+  * `templates_s3_bucket` - Prepared S3 bucket name.
+  * `templates_s3_prefix` - Prefix(Folder) name in Prepared S3 bucket. CloudFormation templates store in.
+  * `templates_local_dir`(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) stored.
 
-* 'templates_s3_bucket' and 'templates_s3_refix' can contains placeholder(Like ''%(environment)s'). Replace by Fabric env.
+* `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
 
 ### Define Stack
 
 Define Stack using 'StackGroup#define_task()'.
 
 * Parameters.
-  * 'alias' - Alias(Short name) of Stack. This name is using task parameter.
-  * 'stack_name' - CloudFormation Stack name.
-  * 'template_path' - Template file path.(Relative path from 'templates_local_dir')
-  * ''**kwargs' - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
+  * `alias` - Alias(Short name) of Stack. This name is using task parameter.
+  * `stack_name` - CloudFormation Stack name.
+  * `template_path` - Template file path.(Relative path from 'templates_local_dir')
+  * ``**kwargs` - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
 
-* 'templates_s3_bucket' and 'templates_s3_refix' can contains placeholder(Like ''%(environment)s'). Replace by Fabric env.
+* `stack_name` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
 
 ### Generate Task
 
