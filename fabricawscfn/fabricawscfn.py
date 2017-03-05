@@ -143,6 +143,16 @@ class StackGroup(object):
           return True
       return False
 
+    def colord_stack_status(stack_status):
+      if stack_status.endswith('_COMPLETE'):
+        return green(stack_status)
+      if stack_status.endswith('_IN_PROGRESS'):
+        return yellow(stack_status)
+      if stack_status.endswith('_FAILED'):
+        return red(stack_status)
+      else:
+        return stack_status
+
     table = PrettyTable(['StackAlias', 'StackName', 'Status', 'CreatedTime', 'UpdatedTime', 'Description'])
     table.align['StackAlias'] = 'l'
     table.align['StackName'] = 'l'
@@ -157,7 +167,7 @@ class StackGroup(object):
           table.add_row([
             defined_stack_aliases.pop(stack_name), # pop!
             stack_name,
-            summary['StackStatus'],
+            colord_stack_status(summary['StackStatus']),
             summary['CreationTime'],
             summary['LastUpdatedTime'] if summary.has_key('LastUpdatedTime') else '-',
             summary['TemplateDescription']
