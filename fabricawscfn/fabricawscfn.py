@@ -18,7 +18,7 @@ class StackGroup(object):
 
     :param templates_s3_bucket: S3 bucket name for templates. (allow placeholder. will be replace by env.)
     :param templates_s3_prefix: S3 prefix(folder) for templates. (allow placeholder. will be replace by env.)
-    :param templates_local_dir: Local dir for templates.
+    :param templates_local_dir: Local dir for templates.(OPTIONAL. Default current dir)
     '''
     # {Stack Alias, StackDef}
     self.stack_defs = OrderedDict()
@@ -411,6 +411,7 @@ class StackDef(object):
     self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
       StackName = self.actual_stack_name()
     )
+    print('Finish.')
 
   def update(self, **kwparams):
     # Override Fabric env with task parameter.
@@ -490,6 +491,7 @@ class StackDef(object):
       self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
         StackName = self.actual_stack_name()
       )
+      print('Finish.')
 
   def delete(self):
     # TODO Async execution.
@@ -503,6 +505,7 @@ class StackDef(object):
     self.stack_group.cfn_client.get_waiter('stack_delete_complete').wait(
       StackName = self.actual_stack_name()
     )
+    print('Finish.')
 
   def get_stack_operations(self):
     return [self.create, self.update, self.delete]
