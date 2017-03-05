@@ -35,6 +35,16 @@ class StackGroup(object):
     rand = '%d' % (time.time() * 100000)
     namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
 
+  def __colord_status(self, status):
+    if status.endswith('_COMPLETE'):
+      return green(status)
+    if status.endswith('_IN_PROGRESS'):
+      return yellow(status)
+    if status.endswith('_FAILED'):
+      return red(status)
+    else:
+      return status
+
   def actual_templates_s3_bucket(self):
     return self.templates_s3_bucket % env
 
@@ -143,16 +153,6 @@ class StackGroup(object):
           return True
       return False
 
-    def colord_stack_status(stack_status):
-      if stack_status.endswith('_COMPLETE'):
-        return green(stack_status)
-      if stack_status.endswith('_IN_PROGRESS'):
-        return yellow(stack_status)
-      if stack_status.endswith('_FAILED'):
-        return red(stack_status)
-      else:
-        return stack_status
-
     table = PrettyTable(['StackAlias', 'StackName', 'Status', 'CreatedTime', 'UpdatedTime', 'Description'])
     table.align['StackAlias'] = 'l'
     table.align['StackName'] = 'l'
@@ -167,7 +167,7 @@ class StackGroup(object):
           table.add_row([
             defined_stack_aliases.pop(stack_name), # pop!
             stack_name,
-            colord_stack_status(summary['StackStatus']),
+            self.__colord_status(summary['StackStatus']),
             summary['CreationTime'],
             summary['LastUpdatedTime'] if summary.has_key('LastUpdatedTime') else '-',
             summary['TemplateDescription']
@@ -198,14 +198,16 @@ class StackGroup(object):
     table = PrettyTable()
     table.add_column('StackName', [stack.stack_name])
     table.align['StackName'] = 'l'
-    table.add_column('Status', [stack.stack_status])
+    table.add_column('Status', [self.__colord_status(stack.stack_status)])
     table.add_column('CreatedTime', [stack.creation_time])
     table.add_column('UpdatedTime', [stack.last_updated_time])
     table.add_column('Description', [stack.description])
     print(table)
 
     print(blue('Parameters:', bold = True))
-    if stack.parameters is not None:
+    if stack.parameters is None:
+      print('No parameters.')
+    else:
       table = PrettyTable(['Key', 'Value'])
       table.align['Key'] = 'l'
       table.align['Value'] = 'l'
@@ -217,7 +219,9 @@ class StackGroup(object):
       print(table)
 
     print(blue('Outputs:', bold = True))
-    if stack.outputs is not None:
+    if stack.outputs is None:
+      print('No outputs.')
+    else:
       table = PrettyTable(['Key', 'Value', 'Description'])
       table.align['Key'] = 'l'
       table.align['Value'] = 'l'
@@ -226,9 +230,26 @@ class StackGroup(object):
         table.add_row([
           output['OutputKey'],
           output['OutputValue'],
-          output['Description']
+          output['Description'] if output.has_key('Description') else '-'
         ])
       print(table)
+
+    print(blue('Events(last 20):', bold = True))
+    table = PrettyTable(['Timestamp', 'Status', 'Type', 'LogicalID', 'StatusReason'])
+    table.align['Timestamp'] = 'l'
+    table.align['Type'] = 'l'
+    table.align['LogicalID'] = 'l'
+    table.align['StatusReason'] = 'l'
+    # Show latest 20 events.
+    for event in list(stack.events.all())[:20]:
+      table.add_row([
+        event.timestamp,
+        self.__colord_status(event.resource_status),
+        event.resource_type,
+        event.logical_resource_id,
+        event.resource_status_reason
+      ])
+    print(table)
 
   # TODO Bulk create all stacks.
   # TODO Bulk update all stacks.
@@ -265,7 +286,7 @@ class StackGroup(object):
               summary['LogicalResourceId'],
               summary['PhysicalResourceId'],
               summary['ResourceType'],
-              summary['ResourceStatus'],
+              self.__colord_status(summary['ResourceStatus']),
               summary['LastUpdatedTimestamp']
             ])
       except botocore.exceptions.ClientError:
