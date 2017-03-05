@@ -107,11 +107,13 @@ class StackGroup(object):
 
     :param alias: Stack alias.
     '''
+    template_local_path = '%s/%s' % (
+      self.templates_local_dir,
+      self.stack_defs[alias].template_path
+    )
+    print('Validating template %s...' % template_local_path)
     local(
-      "aws cloudformation validate-template --template-body file://%s/%s --output table" % (
-        self.templates_local_dir,
-        self.stack_defs[alias].template_path
-      )
+      "aws cloudformation validate-template --template-body file://%s --output table" % template_local_path
     )
 
   def sync_templates(self):
@@ -119,6 +121,7 @@ class StackGroup(object):
     Synchronize templates local dir to S3 bucket.
     '''
     s3url = 's3://%s/%s' % (self.actual_templates_s3_bucket(), self.actual_templates_s3_prefix())
+    print('Synchronizing templates local %s to %s...' % (self.templates_local_dir, s3url))
     local('aws s3 sync %s %s --delete --include \"*.yaml\"' % (self.templates_local_dir, s3url))
 
   def ls_stacks(self):
@@ -193,6 +196,13 @@ class StackGroup(object):
     :param alias: Stack alias.
     '''
     stack = self.cfn_resource.Stack(self.stack_defs[alias].actual_stack_name())
+    try:
+      stack.stack_id
+    except botocore.exceptions.ClientError:
+      # Stack does not exists
+      print(yellow('Stack %s does not exists.' % stack.name))
+      return
+
 
     print(blue('Stack:', bold = True))
     table = PrettyTable()
@@ -269,7 +279,6 @@ class StackGroup(object):
 
     for stack_def in self.stack_defs.values():
       stack_name = stack_def.actual_stack_name()
-
       try:
         pages = paginator.paginate(
           StackName = stack_name,
@@ -277,7 +286,6 @@ class StackGroup(object):
             'MaxItems': 100
           }
         )
-
         for page in pages:
           summaries = page['StackResourceSummaries']
           for summary in summaries:
@@ -290,6 +298,7 @@ class StackGroup(object):
               summary['LastUpdatedTimestamp']
             ])
       except botocore.exceptions.ClientError:
+        # Ignore this stack if exception occurred.
         pass
 
     print(blue('Resrouces:', bold = True))
@@ -299,7 +308,6 @@ class StackGroup(object):
     '''
     List exports.
     '''
-
     def get_exported_stack_name(export):
       exportingStackId = export['ExportingStackId']
       for stack_def in self.stack_defs.values():
@@ -385,9 +393,12 @@ class StackDef(object):
         'ParameterValue': param_value
       })
 
-    print('Create stack %s.' % self.actual_stack_name())
-
+    # TODO Async execution.
     # Create stack.
+    print('Creating stack...')
+    print('  Stack Name: %s' % self.actual_stack_name())
+    print('  Template  : %s' % self.template_s3_url())
+    print('  Parameters: %s' % params)
     self.stack_group.cfn_resource.create_stack(
       StackName = self.actual_stack_name(),
       TemplateURL = self.template_s3_url(),
@@ -396,6 +407,7 @@ class StackDef(object):
     )
 
     # Wait create complete.
+    print('Waiting for complete...')
     self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
       StackName = self.actual_stack_name()
     )
@@ -455,8 +467,12 @@ class StackDef(object):
       })
 
     # TODO Confirm update.
-
-    print('Update stack.')
+    # TODO Async execution.
+    # Update stack.
+    print('Updating stack...')
+    print('  Stack Name: %s' % self.actual_stack_name())
+    print('  Template  : %s' % self.template_s3_url())
+    print('  Parameters: %s' % params)
     try:
       stack.update(
         TemplateURL = self.template_s3_url(),
@@ -469,15 +485,21 @@ class StackDef(object):
       else:
         raise e
     else:
+      # Wait update complete.
+      print('Waiting for complete...')
       self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
         StackName = self.actual_stack_name()
       )
 
   def delete(self):
-    print('Delete stack.')
-
+    # TODO Async execution.
+    # Delete stack.
+    print('Deleting stack...')
+    print('  Stack Name: %s' % self.actual_stack_name())
     self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete()
 
+    # Wait delete complete.
+    print('Waiting for complete...')
     self.stack_group.cfn_client.get_waiter('stack_delete_complete').wait(
       StackName = self.actual_stack_name()
     )
