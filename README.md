@@ -5,9 +5,6 @@ A Python library that generates [Fabric](http://www.fabfile.org) tasks to manipu
 
 You will be able to manipulate the CloudFormation stack with the CUI.
 
-**This repository in sandbox now.**
-**Do not use in your product development.**
-
 # Setup
 
 ## Requirement
@@ -62,19 +59,19 @@ Instantiate `StackGroup`.
   * `templates_s3_prefix` - Prefix(Folder) name in Prepared S3 bucket. CloudFormation templates store in.
   * `templates_local_dir`(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) stored.
 
-* `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
+* `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
 
 ### 3-2.Define Stack
 
 Define Stack(s) using `StackGroup#define_task()`.
 
 * Parameters.
-  * `alias` - Alias(Short name) of Stack. This name is using task parameter.
+  * `alias` - Alias(Short name) of Stack. This name using task parameter.
   * `stack_name` - CloudFormation Stack name.
   * `template_path` - Template file path.(Relative path from 'templates_local_dir')
   * `**kwargs` - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
 
-* `stack_name` can contains placeholder(Like `%(environment)s`). Replace by Fabric env.
+* `stack_name` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
 
 ### 3-3.Generate Task
 
@@ -201,11 +198,12 @@ Synchronizing templates local templates to s3://crossroad0201-fabricawscfn/examp
 upload: templates\foo.yaml to s3://crossroad0201-fabricawscfn/example/dev/foo.yaml
 ```
 
-### `crate_[ALIAS]`
+### `create_[ALIAS]`
 
 Create new stack.
 
-You can specify Stack parameter(s) via task parameter.(Like this `$ fab create_xxx:Param1=PARAM1,Param2=PARAM2`)
+You can specify Stack parameter(s) via task parameter (Like this `$ fab create_xxx:Param1=PARAM1,Param2=PARAM2`).
+
 If parameters are not specified by task parameter, prompt will be displayed and input will be prompted.
 
 ```bash
