@@ -45,6 +45,9 @@ class StackGroup(object):
     else:
       return status
 
+  def __format_datetime(self, datetime):
+    return '{0:%Y-%m-%d %H:%M:%S %Z}'.format(datetime) if datetime is not None else '-'
+
   def actual_templates_s3_bucket(self):
     return self.templates_s3_bucket % env
 
@@ -172,8 +175,8 @@ class StackGroup(object):
             defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
             stack_name,
             self.__colord_status(summary['StackStatus']),
-            summary['CreationTime'],
-            summary['LastUpdatedTime'] if summary.has_key('LastUpdatedTime') else '-',
+            self.__format_datetime(summary['CreationTime']),
+            self.__format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
             summary['TemplateDescription']
           ])
     # Append stacks that have not been created yet.
@@ -210,8 +213,8 @@ class StackGroup(object):
     table.add_column('StackName', [stack.stack_name])
     table.align['StackName'] = 'l'
     table.add_column('Status', [self.__colord_status(stack.stack_status)])
-    table.add_column('CreatedTime', [stack.creation_time])
-    table.add_column('UpdatedTime', [stack.last_updated_time])
+    table.add_column('CreatedTime', [self.__format_datetime(stack.creation_time)])
+    table.add_column('UpdatedTime', [self.__format_datetime(stack.last_updated_time)])
     table.add_column('Description', [stack.description])
     print(table)
 
@@ -254,7 +257,7 @@ class StackGroup(object):
     # Show latest 20 events.
     for event in list(stack.events.all())[:20]:
       table.add_row([
-        event.timestamp,
+        self.__format_datetime(event.timestamp),
         self.__colord_status(event.resource_status),
         event.resource_type,
         event.logical_resource_id,
@@ -296,7 +299,7 @@ class StackGroup(object):
               summary['PhysicalResourceId'],
               summary['ResourceType'],
               self.__colord_status(summary['ResourceStatus']),
-              summary['LastUpdatedTimestamp']
+              self.__format_datetime(summary['LastUpdatedTimestamp'])
             ])
       except botocore.exceptions.ClientError:
         # Ignore this stack if exception occurred.
