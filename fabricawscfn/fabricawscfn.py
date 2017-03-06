@@ -48,6 +48,17 @@ class StackGroup(object):
   def __format_datetime(self, datetime):
     return '{0:%Y-%m-%d %H:%M:%S %Z}'.format(datetime) if datetime is not None else '-'
 
+  def __shorten(self, str, slen, elen):
+    if len(str) <= (slen + elen):
+      return str
+    else:
+      if slen < 1:
+        return '..%s' % str[len(str) - elen + 2:len(str)]
+      elif elen < 1:
+        return '%s..' % str[0:slen - 2]
+      else:
+        return '%s..%s' % (str[0:slen -1], str[len(str) - elen + 1:len(str)])
+
   def actual_templates_s3_bucket(self):
     return self.templates_s3_bucket % env
 
@@ -173,7 +184,7 @@ class StackGroup(object):
           table.add_row([
             # TODO Show Alias at chaining stack.
             defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
-            stack_name,
+            self.__shorten(stack_name, 40, 5),
             self.__colord_status(summary['StackStatus']),
             self.__format_datetime(summary['CreationTime']),
             self.__format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
@@ -296,7 +307,7 @@ class StackGroup(object):
             table.add_row([
               stack_name,
               summary['LogicalResourceId'],
-              summary['PhysicalResourceId'],
+              self.__shorten(summary['PhysicalResourceId'], 40, 5),
               summary['ResourceType'],
               self.__colord_status(summary['ResourceStatus']),
               self.__format_datetime(summary['LastUpdatedTimestamp'])
