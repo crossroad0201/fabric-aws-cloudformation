@@ -89,6 +89,7 @@ class StackGroup(object):
     '''
     # Add general tasks.
     self.__add_fabric_task(namespace, 'params', self.params)
+    self.__add_fabric_task(namespace, 'open_console', self.open_console)
     self.__add_fabric_task(namespace, 'validate_template', self.validate_template)
     self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates)
     self.__add_fabric_task(namespace, 'ls_stacks', self.ls_stacks)
@@ -114,6 +115,16 @@ class StackGroup(object):
     '''
     for param_name, param_value in kwparams.iteritems():
       env[param_name] = param_value
+
+  def open_console(self):
+    '''
+    Open AWS Console on your default Web browser.
+    '''
+    import webbrowser
+    session = boto3.session.Session()
+    webbrowser.open('https://%(region)s.console.aws.amazon.com/cloudformation/home?region=%(region)s#/stacks?filter=active' % dict(
+      region = session.region_name
+    ))
 
   def validate_template(self, alias):
     '''
