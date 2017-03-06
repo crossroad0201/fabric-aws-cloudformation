@@ -272,7 +272,7 @@ class StackGroup(object):
         self.__colord_status(event.resource_status),
         event.resource_type,
         event.logical_resource_id,
-        event.resource_status_reason
+        event.resource_status_reason if event.resource_status_reason is not None else ''
       ])
     print(table)
 
