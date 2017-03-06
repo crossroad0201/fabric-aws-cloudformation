@@ -136,7 +136,7 @@ class StackGroup(object):
     '''
     s3url = 's3://%s/%s' % (self.actual_templates_s3_bucket(), self.actual_templates_s3_prefix())
     print('Synchronizing templates local %s to %s...' % (self.templates_local_dir, s3url))
-    local('aws s3 sync %s %s --delete --include \"*.yaml\"' % (self.templates_local_dir, s3url))
+    local('aws s3 sync %s %s --delete --exclude "*" --include \"*.yaml\"' % (self.templates_local_dir, s3url))
 
   def ls_stacks(self):
     '''
