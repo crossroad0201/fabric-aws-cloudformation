@@ -168,7 +168,8 @@ class StackGroup(object):
         stack_name = summary['StackName']
         if is_in_stack_group(stack_name):
           table.add_row([
-            defined_stack_aliases.pop(stack_name), # pop!
+            # TODO Show Alias at chaining stack.
+            defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
             stack_name,
             self.__colord_status(summary['StackStatus']),
             summary['CreationTime'],
