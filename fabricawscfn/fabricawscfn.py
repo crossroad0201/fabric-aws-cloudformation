@@ -165,8 +165,8 @@ class StackGroup(object):
 
     def is_in_stack_group(stack_name):
       for defined_stack_name in defined_stack_names:
-        # If stack name matches forward, it's in this stack group.(for Chaining stacks)
-        if stack_name.startswith(defined_stack_name):
+        # startswith(...-) for Chained stack.
+        if stack_name == defined_stack_name or stack_name.startswith(defined_stack_name + '-'):
           return True
       return False
 
