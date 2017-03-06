@@ -188,7 +188,7 @@ class StackGroup(object):
             self.__colord_status(summary['StackStatus']),
             self.__format_datetime(summary['CreationTime']),
             self.__format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
-            summary['TemplateDescription']
+            self.__shorten(summary['TemplateDescription'], 70, 0)
           ])
     # Append stacks that have not been created yet.
     for not_exist_stack_name, not_exist_stack_alias in defined_stack_aliases.items():
@@ -226,7 +226,7 @@ class StackGroup(object):
     table.add_column('Status', [self.__colord_status(stack.stack_status)])
     table.add_column('CreatedTime', [self.__format_datetime(stack.creation_time)])
     table.add_column('UpdatedTime', [self.__format_datetime(stack.last_updated_time)])
-    table.add_column('Description', [stack.description])
+    table.add_column('Description', [self.__shorten(stack.description, 70, 0)])
     print(table)
 
     print(blue('Parameters:', bold = True))
@@ -255,7 +255,7 @@ class StackGroup(object):
         table.add_row([
           output['OutputKey'],
           output['OutputValue'],
-          output['Description'] if output.has_key('Description') else '-'
+          self.__shorten(output['Description'], 70, 0) if output.has_key('Description') else '-'
         ])
       print(table)
 
