@@ -29,6 +29,15 @@ pip uninstall fabricawscfn
 
 # Usage
 
+Local directory and file structure example.
+```text
+fabfile.py
+templates/
+  - foo.yaml
+  - subdir/
+    - bar.yaml
+```
+
 ## 1.Preparation
 
 * Create S3 bucket for store CloudFormation templates.
@@ -46,7 +55,7 @@ from fabricawscfn import *
 ```python
 StackGroup('my-cfn-templates', 'example', 'templates')\
   .define_stack('foo', 'example-foo', 'foo.yaml')\
-  .define_stack('bar', 'example-bar', 'bar.yaml', Tags=[{'Key':'example', 'Value':'EXAMPLE'}])\
+  .define_stack('bar', 'example-bar', 'subdir/bar.yaml', Tags=[{'Key':'example', 'Value':'EXAMPLE'}])\
   .generate_task(globals())
 ```
 
