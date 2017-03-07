@@ -195,7 +195,7 @@ class StackGroup(object):
           table.add_row([
             # TODO Show Alias at chaining stack.
             defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
-            self.__shorten(stack_name, 40, 5),
+            self.__shorten(stack_name, 70, 5),
             self.__colord_status(summary['StackStatus']),
             self.__format_datetime(summary['CreationTime']),
             self.__format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
@@ -288,7 +288,7 @@ class StackGroup(object):
         self.__colord_status(event.resource_status),
         event.resource_type,
         event.logical_resource_id,
-        event.resource_status_reason if event.resource_status_reason is not None else ''
+        self.__shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
       ])
     print(table)
 
