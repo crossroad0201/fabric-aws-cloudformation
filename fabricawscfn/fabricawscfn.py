@@ -25,6 +25,7 @@ class StackGroup(object):
     self.templates_s3_bucket = templates_s3_bucket
     self.templates_s3_prefix = templates_s3_prefix
     self.templates_local_dir = templates_local_dir
+    self.default_stack_args_ = {}
 
     # Init boto3 clients.
     self.cfn_client = boto3.client('cloudformation')
@@ -64,6 +65,17 @@ class StackGroup(object):
 
   def actual_templates_s3_prefix(self):
     return self.templates_s3_prefix % env
+
+  def default_stack_args(self, **kwargs):
+    '''
+    Set default Stack arguments.
+    This arguments applied to all stack. Can override by arguments per define_stack().
+
+    :param kwargs: Stack arguments.
+    :return: self
+    '''
+    self.default_stack_args_ = kwargs
+    return self
 
   def define_stack(self, alias, stack_name, template_path, **kwargs):
     '''
@@ -383,6 +395,11 @@ class StackDef(object):
       self.template_path
     )
 
+  def __merge_stack_args(self, **kwargs):
+    copied = self.stack_group.default_stack_args_.copy()
+    copied.update(**kwargs)  # Override default args by specified args.
+    return copied
+
   def create(self, **kwparams):
     # Override Fabric env with task parameter.
     self.stack_group.params(**kwparams)
@@ -393,7 +410,7 @@ class StackDef(object):
     )
 
     # Resolve parameters from task parameter, fabric env, prompt.
-    params = []
+    stack_params = []
     for param_def in template['Parameters']:
       param_key = param_def['ParameterKey']
       if env.has_key(param_key):
@@ -419,22 +436,24 @@ class StackDef(object):
         if not param_value:
           raise Exception('Missing require parameter %s.' % (param_key))
 
-      params.append({
+      stack_params.append({
         'ParameterKey': param_key,
         'ParameterValue': param_value
       })
 
     # TODO Async execution.
     # Create stack.
+    stack_args = self.__merge_stack_args(**self.kwargs)
     print('Creating stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
     print('  Template  : %s' % self.template_s3_url())
-    print('  Parameters: %s' % params)
+    print('  Parameters: %s' % stack_params)
+    print("  Arguments : %s" % stack_args)
     self.stack_group.cfn_resource.create_stack(
       StackName = self.actual_stack_name(),
       TemplateURL = self.template_s3_url(),
-      Parameters = params,
-      **self.kwargs
+      Parameters = stack_params,
+      **stack_args
     )
 
     # Wait create complete.
@@ -462,7 +481,7 @@ class StackDef(object):
     )
 
     # Resolve parameters from task parameter, fabric env, prompt.
-    params = []
+    stack_params = []
     for param_def in template['Parameters']:
       param_key = param_def['ParameterKey']
       if env.has_key(param_key):
@@ -493,7 +512,7 @@ class StackDef(object):
             # Prompt parameter.
             param_value = prompt('%s?' % param_key)
 
-      params.append({
+      stack_params.append({
         'ParameterKey': param_key,
         'ParameterValue': param_value
       })
@@ -501,15 +520,17 @@ class StackDef(object):
     # TODO Confirm update.
     # TODO Async execution.
     # Update stack.
+    stack_args = self.__merge_stack_args(**self.kwargs)
     print('Updating stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
     print('  Template  : %s' % self.template_s3_url())
-    print('  Parameters: %s' % params)
+    print('  Parameters: %s' % stack_params)
+    print('  Arguments : %s' % stack_args)
     try:
       stack.update(
         TemplateURL = self.template_s3_url(),
-        Parameters = params,
-        **self.kwargs
+        Parameters = stack_params,
+        **stack_args
       )
     except botocore.exceptions.ClientError as e:
       if 'No updates are to be performed' in e.args[0]:
@@ -527,9 +548,13 @@ class StackDef(object):
   def delete(self):
     # TODO Async execution.
     # Delete stack.
+    stack_args = self.__merge_stack_args(**self.kwargs)
     print('Deleting stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
-    self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete()
+    print('  Arguments : %s' % stack_args)
+    self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete(
+      **stack_args
+    )
 
     # Wait delete complete.
     print('Waiting for complete... (ctrl+C to exit)')
