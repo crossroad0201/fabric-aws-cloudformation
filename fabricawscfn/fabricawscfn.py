@@ -438,7 +438,7 @@ class StackDef(object):
     )
 
     # Wait create complete.
-    print('Waiting for complete...')
+    print('Waiting for complete... (ctrl+C to exit)')
     self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
       StackName = self.actual_stack_name()
     )
@@ -518,7 +518,7 @@ class StackDef(object):
         raise e
     else:
       # Wait update complete.
-      print('Waiting for complete...')
+      print('Waiting for complete... (ctrl+C to exit)')
       self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
         StackName = self.actual_stack_name()
       )
@@ -532,7 +532,7 @@ class StackDef(object):
     self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete()
 
     # Wait delete complete.
-    print('Waiting for complete...')
+    print('Waiting for complete... (ctrl+C to exit)')
     self.stack_group.cfn_client.get_waiter('stack_delete_complete').wait(
       StackName = self.actual_stack_name()
     )
