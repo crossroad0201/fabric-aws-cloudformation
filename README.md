@@ -1,5 +1,5 @@
-Fabric AWS CloudFormation
-====
+Fabric task generator for AWS CloudFormation
+============================================
 
 A Python library that generates [Fabric](http://www.fabfile.org) tasks to manipulate the stack of AWS CloudFormation.
 
@@ -9,13 +9,13 @@ You will be able to manipulate the CloudFormation stack with the CUI.
 
 ## Requirement
 
-* Python
+* Python 2.x
 * [Fabric](http://www.fabfile.org)
 * [AWS CLI](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-set-up.html)
 
 ## Install
 
-Install `fabricawscf`([and Dependencies](./setup.py)) via pip.
+Install `fabricawscf` (and [Dependencies](./setup.py)) via pip.
 
 ```bash
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
@@ -38,9 +38,11 @@ templates/
     - bar.yaml
 ```
 
+See [Example fabfile.py](./example/fabfile.py).
+
 ## 1.Preparation
 
-* Create S3 bucket for store CloudFormation templates.
+* Create **S3 bucket** for store CloudFormation templates.
 
 ## 2.Import Fabric AWS CloudFormation.
 
@@ -65,8 +67,8 @@ Instantiate `StackGroup`.
 
 * Parameters.
   * `templates_s3_bucket` - Prepared S3 bucket name.
-  * `templates_s3_prefix` - Prefix(Folder) name in Prepared S3 bucket. CloudFormation templates store in.
-  * `templates_local_dir`(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) stored.
+  * `templates_s3_prefix` - Prefix(Folder) name in prepared S3 bucket. CloudFormation templates store in.
+  * `templates_local_dir`(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) location.
 
 * `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
 
@@ -77,8 +79,9 @@ Define Stack(s) using `StackGroup#define_task()`.
 * Parameters.
   * `alias` - Alias(Short name) of Stack. This name using task parameter.
   * `stack_name` - CloudFormation Stack name.
-  * `template_path` - Template file path.(Relative path from 'templates_local_dir')
-  * `**kwargs` - Additional arguments for Create/Update stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
+  * `template_path` - Template file path.(Relative path from `templates_local_dir`)
+  * `**kwargs` - Additional arguments for Create/Update/Delete stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
+    * If you want to set default stack arguments for all stacks, using `StackGroup#default_stack_args()`.
 
 * `stack_name` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
 
@@ -87,21 +90,26 @@ Define Stack(s) using `StackGroup#define_task()`.
 Generate Fabric tasks using `StackGroup#generate_task()`.
 
 * Parameters.
-  * `namespace` - Generated tasks added to this namespace. Normaly specify 'globals()'.
+  * `namespace` - Generated tasks added to this namespace. Normaly specify `globals()`.
 
 ## 4.Finish
 
-You can check generated tasks run `fab -l` comand.
+You can check generated tasks run `fab -l` command.
 
 ```bash
 $ fab -l
+
+Example fabfile.py using fabricawscfn.
+
 Available commands:
 
+    console            Open AWS Console on your default Web browser.
     create_bar         create stack bar.
     create_foo         create stack foo.
     delete_bar         delete stack bar.
     delete_foo         delete stack foo.
     desc_stack         Describe existing stack.
+    env_on             Set environment.(Default dev)
     ls_exports         List exports.
     ls_resources       List existing stack resources.
     ls_stacks          List stacks.
@@ -114,11 +122,9 @@ Available commands:
 
 # Tasks
 
-See [Example fabfile.py](./example/fabfile.py).
+Show available all tasks run `fab -l`, and more detail `fab -d [TASK_NAME]`.
 
 ## Basic Tasks.
-
-Show available all tasks run `fab -l`, and more detail `fab -d [TASK_NAME]`.
 
 ### `ls_stacks`
 
@@ -135,7 +141,7 @@ Stacks:
 +------------+----------------------+-----------------+----------------------------------+-------------+-------------+
 ```
 
-### `desc_stack:[ALIAS]`
+### `desc_stack:[StackAlias or StackName]`
 
 Show stack detail.
 
@@ -175,7 +181,7 @@ Events(last 20):
 +----------------------------------+--------------------+----------------------------+----------------------+-----------------------------+
 ```
 
-### `validate_template:[ALIAS]`
+### `validate_template:[StackAlias]`
 
 Validate CloudFormation template.
 
@@ -207,7 +213,7 @@ Synchronizing templates local templates to s3://crossroad0201-fabricawscfn/examp
 upload: templates\foo.yaml to s3://crossroad0201-fabricawscfn/example/dev/foo.yaml
 ```
 
-### `create_[ALIAS]`
+### `create_[StackAlias]`
 
 Create new stack.
 
