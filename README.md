@@ -15,7 +15,7 @@ You will be able to manipulate the CloudFormation stack with the CUI.
 
 ## Install
 
-Install `fabricawscf` (and [Dependencies](./setup.py)) via pip.
+Install `fabricawscfn` (and [Dependencies](./setup.py)) via pip.
 
 ```bash
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
