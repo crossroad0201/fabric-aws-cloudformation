@@ -5,6 +5,17 @@ A Python library that generates [Fabric](http://www.fabfile.org) tasks to manipu
 
 You will be able to manipulate the CloudFormation stack with the CUI.
 
+```bash
+$ fab ls_stacks
+Stacks:
++------------+----------------------+-----------------+----------------------------------+-------------+-------------+
+| StackAlias | StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
++------------+----------------------+-----------------+----------------------------------+-------------+-------------+
+| foo        | fabricawscfn-dev-foo | CREATE_COMPLETE | 2017-03-05 04:35:12.823000+00:00 |      -      | Foo bucket. |
+| bar        | fabricawscfn-dev-bar |   Not created   |                -                 |      -      | -           |
++------------+----------------------+-----------------+----------------------------------+-------------+-------------+
+```
+
 # Setup
 
 ## Requirement
