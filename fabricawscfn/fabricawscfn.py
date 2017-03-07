@@ -215,13 +215,18 @@ class StackGroup(object):
     print(blue('Stacks:', bold = True))
     print(table)
 
-  def desc_stack(self, alias):
+  def desc_stack(self, alias_or_stackname):
     '''
     Describe existing stack.
 
-    :param alias: Stack alias.
+    :param alias_or_stackname: Stack alias or Stack name.
     '''
-    stack = self.cfn_resource.Stack(self.stack_defs[alias].actual_stack_name())
+    if self.stack_defs.has_key(alias_or_stackname):
+      stack_name = self.stack_defs[alias_or_stackname].actual_stack_name()
+    else:
+      stack_name = alias_or_stackname
+
+    stack = self.cfn_resource.Stack(stack_name)
     try:
       stack.stack_id
     except botocore.exceptions.ClientError:
