@@ -546,9 +546,17 @@ class StackDef(object):
       print('Finish.')
 
   def delete(self):
+    def filter_stack_args_for_delete(**kwargs):
+      accept_arg_names = ['RetainResources', 'RoleARN']
+      filtered = {}
+      for key, value in kwargs.items():
+        if key in accept_arg_names:
+          filtered[key] = value
+      return filtered
+
     # TODO Async execution.
     # Delete stack.
-    stack_args = self.__merge_stack_args(**self.kwargs)
+    stack_args = filter_stack_args_for_delete(**self.__merge_stack_args(**self.kwargs))
     print('Deleting stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
     print('  Arguments : %s' % stack_args)
