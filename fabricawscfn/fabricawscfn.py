@@ -138,15 +138,20 @@ class StackGroup(object):
       region = session.region_name
     ))
 
-  def validate_template(self, alias):
+  def validate_template(self, alias_or_template_path):
     '''
     Validate template on local dir.
 
-    :param alias: Stack alias.
+    :param alias_or_template_path: Stack alias or Template file relative path.
     '''
+    if self.stack_defs.has_key(alias_or_template_path):
+      template_path = self.stack_defs[alias_or_template_path].template_path
+    else:
+      template_path = alias_or_template_path
+
     template_local_path = '%s/%s' % (
       self.templates_local_dir,
-      self.stack_defs[alias].template_path
+      template_path
     )
     print('Validating template %s...' % template_local_path)
     local(
