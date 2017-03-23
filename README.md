@@ -85,7 +85,7 @@ Instantiate `StackGroup`.
 
 ### 3-2.Define Stack
 
-Define Stack(s) using `StackGroup#define_task()`.
+Define Stack(s) using `StackGroup#define_stack()`.
 
 * Parameters.
   * `alias` - Alias(Short name) of Stack. This name using task parameter.
