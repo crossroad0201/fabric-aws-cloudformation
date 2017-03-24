@@ -104,10 +104,10 @@ class StackGroup(object):
     self.__add_fabric_task(namespace, 'console', self.console)
     self.__add_fabric_task(namespace, 'validate_template', self.validate_template)
     self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates)
-    self.__add_fabric_task(namespace, 'ls_stacks', self.ls_stacks)
+    self.__add_fabric_task(namespace, 'list_stacks', self.list_stacks)
     self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack)
-    self.__add_fabric_task(namespace, 'ls_resources', self.ls_resources)
-    self.__add_fabric_task(namespace, 'ls_exports', self.ls_exports)
+    self.__add_fabric_task(namespace, 'list_resources', self.list_resources)
+    self.__add_fabric_task(namespace, 'list_exports', self.list_exports)
 
     # Add stack tasks.
     for stack_def in self.stack_defs.values():
@@ -166,7 +166,7 @@ class StackGroup(object):
     print('Synchronizing templates local %s to %s...' % (self.templates_local_dir, s3url))
     local('aws s3 sync %s %s --delete --exclude "*" --include \"*.yaml\"' % (self.templates_local_dir, s3url))
 
-  def ls_stacks(self):
+  def list_stacks(self):
     '''
     List stacks.
     '''
@@ -313,7 +313,7 @@ class StackGroup(object):
   # TODO Bulk update all stacks.
   # TODO Bulk delete all stacks.
 
-  def ls_resources(self):
+  def list_resources(self):
     '''
     List existing stack resources.
     '''
@@ -352,7 +352,7 @@ class StackGroup(object):
     print(blue('Resrouces:', bold = True))
     print(table)
 
-  def ls_exports(self):
+  def list_exports(self):
     '''
     List exports.
     '''
