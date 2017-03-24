@@ -6,7 +6,7 @@ A Python library that generates [Fabric](http://www.fabfile.org) tasks to manipu
 You will be able to manipulate the CloudFormation stack with the CUI.
 
 ```bash
-$ fab ls_stacks
+$ fab list_stacks
 Stacks:
 +------------+----------------------+-----------------+----------------------------------+-------------+-------------+
 | StackAlias | StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
@@ -121,9 +121,9 @@ Available commands:
     delete_foo         delete stack foo.
     desc_stack         Describe existing stack.
     env_on             Set environment.(Default dev)
-    ls_exports         List exports.
-    ls_resources       List existing stack resources.
-    ls_stacks          List stacks.
+    list_exports       List exports.
+    list_resources     List existing stack resources.
+    list_stacks        List stacks.
     params             Set parameters. (Applies to all tasks)
     sync_templates     Synchronize templates local dir to S3 bucket.
     update_bar         update stack bar.
@@ -137,12 +137,12 @@ Show available all tasks run `fab -l`, and more detail `fab -d [TASK_NAME]`.
 
 ## Basic Tasks.
 
-### `ls_stacks`
+### `list_stacks`
 
 Show stacks list.
 
 ```bash
-$ fab ls_stacks
+$ fab list_stacks
 Stacks:
 +------------+----------------------+-----------------+----------------------------------+-------------+-------------+
 | StackAlias | StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
@@ -255,5 +255,5 @@ $ fab params:Param1=PARAM1,Param2=PARAM2 create_xxxx create_yyyy
 ## One liner
 
 ```bash
-fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy ls_stacks ls_resources ls_exports
+fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy list_stacks list_resources list_exports
 ```
