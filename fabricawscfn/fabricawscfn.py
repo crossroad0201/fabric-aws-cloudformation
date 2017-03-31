@@ -364,13 +364,25 @@ class StackGroup(object):
           return stack_name
       return None
 
-    exports = self.cfn_client.list_exports()
+    def recursive_list_exports():
+        def _recursive(a, res = []):
+            res = res + a.get("Exports", [])
+            nt = a.get("NextToken", None)
+            exists_next = nt is not None and len(nt) > 0
+            if exists_next:
+                b = self.cfn_client.list_exports(NextToken = nt)
+                return _recursive(b, res)
+            else:
+                return res
+        return _recursive(self.cfn_client.list_exports())
+
+    exports = recursive_list_exports()
 
     table = PrettyTable(['ExportedStackName', 'ExportName', 'ExportValue'])
     table.align['ExportedStackName'] = 'l'
     table.align['ExportName'] = 'l'
     table.align['ExportValue'] = 'l'
-    for export in exports['Exports']:
+    for export in exports:
       exported_stack_name = get_exported_stack_name(export)
       if exported_stack_name is not None:
         table.add_row([
