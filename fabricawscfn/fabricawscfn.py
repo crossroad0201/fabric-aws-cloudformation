@@ -480,6 +480,100 @@ class StackDef(object):
     )
     print('Finish.')
 
+  def changeset(self, changeset_name, **kwparams):
+    # Override Fabric env with task parameter.
+    self.stack_group.params(**kwparams)
+
+    # FIXME Refactor with update().
+    stack = self.stack_group.cfn_resource.Stack(self.actual_stack_name())
+    def get_previous_param_value(param_key):
+      for param in stack.parameters:
+        if param['ParameterKey'] == param_key:
+          return param['ParameterValue']
+      return None
+
+    # Get template definition.
+    template = self.stack_group.cfn_client.get_template_summary(
+      TemplateURL = self.template_s3_url()
+    )
+
+    # Resolve parameters from task parameter, fabric env, prompt.
+    stack_params = []
+    for param_def in template['Parameters']:
+      param_key = param_def['ParameterKey']
+      if env.has_key(param_key):
+        # Use specified parameter.
+        param_value = env[param_key]
+      else:
+        prev_value = get_previous_param_value(param_key)
+        if prev_value is not None:
+          if param_def.has_key('Description'):
+            # Prompt parameter with description, previous value.
+            param_value = prompt('%s? - %s' % (param_key, param_def['Description']), default = prev_value)
+          else:
+            # Prompt parameter with previous value.
+            param_value = prompt('%s?' % param_key, default = prev_value)
+        elif param_def.has_key('DefaultValue'):
+          default_value = param_def['DefaultValue']
+          if param_def.has_key('Description'):
+            # Prompt parameter with description, default value.
+            param_value = prompt('%s? - %s' % (param_key, param_def['Description']), default = default_value)
+          else:
+            # Prompt parameter with default value.
+            param_value = prompt('%s?' % param_key, default = default_value)
+        else:
+          if param_def.has_key('Description'):
+            # Prompt parameter with description.
+            param_value = prompt('%s? - %s' % (param_key, param_def['Description']))
+          else:
+            # Prompt parameter.
+            param_value = prompt('%s?' % param_key)
+
+      stack_params.append({
+        'ParameterKey': param_key,
+        'ParameterValue': param_value
+      })
+
+    # Create ChangeSet.
+    stack_args = self.__merge_stack_args(**self.kwargs)
+    print('Creating change set...')
+    print('  ChangeSet Name: %s' % changeset_name)
+    print('  Stack Name    : %s' % self.actual_stack_name())
+    print('  Template      : %s' % self.template_s3_url())
+    print('  Parameters    : %s' % stack_params)
+    print('  Arguments     : %s' % stack_args)
+    self.stack_group.cfn_client.create_change_set(
+      StackName = self.actual_stack_name(),
+      ChangeSetName = changeset_name,
+      ChangeSetType = 'UPDATE',
+      TemplateURL = self.template_s3_url(),
+      Parameters = stack_params,
+      **stack_args
+    )
+
+    # Wait create ChangeSet complete.
+    print('Waiting for complete... (ctrl+C to exit)')
+    try:
+      self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name
+      )
+    except botocore.exceptions.WaiterError as e:
+      change_set = self.stack_group.cfn_client.describe_change_set(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name
+      )
+      if 'didn\'t contain changes' in change_set['StatusReason']:
+        print(yellow('No changes. (This change set will delete)'))
+        self.stack_group.cfn_client.delete_change_set(
+          StackName = self.actual_stack_name(),
+          ChangeSetName = changeset_name
+        )
+      else:
+        raise e
+    else:
+      print('Finish.')
+
   def update(self, **kwparams):
     # Override Fabric env with task parameter.
     self.stack_group.params(**kwparams)
@@ -589,4 +683,4 @@ class StackDef(object):
     print('Finish.')
 
   def get_stack_operations(self):
-    return [self.create, self.update, self.delete]
+    return [self.create, self.update, self.changeset, self.delete]
