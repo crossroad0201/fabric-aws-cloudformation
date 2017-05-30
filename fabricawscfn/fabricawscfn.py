@@ -588,7 +588,7 @@ class StackDef(object):
 
     # TODO Async execution.
     stack_args = self.__merge_stack_args(**self.kwargs)
-    if (self.stack_group.in_dryrun):
+    if (self.stack_group.in_dryrun()):
       # Create ChangeSet and show it.
       print('Updating stack (DRY-RUN)...')
       print('  Stack Name: %s' % self.actual_stack_name())
