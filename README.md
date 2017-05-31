@@ -252,6 +252,15 @@ Specify Stack parameters bulkly.
 $ fab params:Param1=PARAM1,Param2=PARAM2 create_xxxx create_yyyy
 ```
 
+### `dryrun`
+
+Turn on DRY-RUN mode, on create / update stack.
+DRY-RUN mode is create `Change Set` and show it.
+
+```bash
+$ fab dryrun:show_details create_xxxx update_yyyy
+```
+
 ## One liner
 
 ```bash

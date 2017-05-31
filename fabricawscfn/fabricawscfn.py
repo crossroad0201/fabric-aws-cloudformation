@@ -2,6 +2,8 @@
 from __future__ import print_function
 from collections import OrderedDict
 from sets import Set
+import datetime
+import json
 
 import boto3
 import botocore
@@ -36,7 +38,7 @@ class StackGroup(object):
     rand = '%d' % (time.time() * 100000)
     namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
 
-  def __colord_status(self, status):
+  def colord_status(self, status):
     if status.endswith('_COMPLETE'):
       return green(status)
     if status.endswith('_IN_PROGRESS'):
@@ -46,10 +48,10 @@ class StackGroup(object):
     else:
       return status
 
-  def __format_datetime(self, datetime):
+  def format_datetime(self, datetime):
     return '{0:%Y-%m-%d %H:%M:%S %Z}'.format(datetime) if datetime is not None else '-'
 
-  def __shorten(self, str, slen, elen):
+  def shorten(self, str, slen, elen):
     if len(str) <= (slen + elen):
       return str
     else:
@@ -108,6 +110,7 @@ class StackGroup(object):
     self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack)
     self.__add_fabric_task(namespace, 'list_resources', self.list_resources)
     self.__add_fabric_task(namespace, 'list_exports', self.list_exports)
+    self.__add_fabric_task(namespace, 'dryrun', self.dryrun)
 
     # Add stack tasks.
     for stack_def in self.stack_defs.values():
@@ -212,11 +215,11 @@ class StackGroup(object):
           table.add_row([
             # TODO Show Alias at chaining stack.
             defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
-            self.__shorten(stack_name, 70, 5),
-            self.__colord_status(summary['StackStatus']),
-            self.__format_datetime(summary['CreationTime']),
-            self.__format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
-            self.__shorten(summary.get('TemplateDescription', ''), 70, 0)
+            self.shorten(stack_name, 70, 5),
+            self.colord_status(summary['StackStatus']),
+            self.format_datetime(summary['CreationTime']),
+            self.format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
+            self.shorten(summary.get('TemplateDescription', ''), 70, 0)
           ])
     # Append stacks that have not been created yet.
     for not_exist_stack_name, not_exist_stack_alias in defined_stack_aliases.items():
@@ -256,10 +259,10 @@ class StackGroup(object):
     table = PrettyTable()
     table.add_column('StackName', [stack.stack_name])
     table.align['StackName'] = 'l'
-    table.add_column('Status', [self.__colord_status(stack.stack_status)])
-    table.add_column('CreatedTime', [self.__format_datetime(stack.creation_time)])
-    table.add_column('UpdatedTime', [self.__format_datetime(stack.last_updated_time)])
-    table.add_column('Description', [self.__shorten(stack.description, 70, 0)])
+    table.add_column('Status', [self.colord_status(stack.stack_status)])
+    table.add_column('CreatedTime', [self.format_datetime(stack.creation_time)])
+    table.add_column('UpdatedTime', [self.format_datetime(stack.last_updated_time)])
+    table.add_column('Description', [self.shorten(stack.description, 70, 0)])
     print(table)
 
     print(blue('Parameters:', bold = True))
@@ -288,7 +291,7 @@ class StackGroup(object):
         table.add_row([
           output['OutputKey'],
           output['OutputValue'],
-          self.__shorten(output['Description'], 70, 0) if output.has_key('Description') else '-'
+          self.shorten(output['Description'], 70, 0) if output.has_key('Description') else '-'
         ])
       print(table)
 
@@ -301,11 +304,11 @@ class StackGroup(object):
     # Show latest 20 events.
     for event in list(stack.events.all())[:20]:
       table.add_row([
-        self.__format_datetime(event.timestamp),
-        self.__colord_status(event.resource_status),
+        self.format_datetime(event.timestamp),
+        self.colord_status(event.resource_status),
         event.resource_type,
         event.logical_resource_id,
-        self.__shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
+        self.shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
       ])
     print(table)
 
@@ -340,10 +343,10 @@ class StackGroup(object):
             table.add_row([
               stack_name,
               summary['LogicalResourceId'],
-              self.__shorten(summary['PhysicalResourceId'], 40, 5),
+              self.shorten(summary['PhysicalResourceId'], 40, 5),
               summary['ResourceType'],
-              self.__colord_status(summary['ResourceStatus']),
-              self.__format_datetime(summary['LastUpdatedTimestamp'])
+              self.colord_status(summary['ResourceStatus']),
+              self.format_datetime(summary['LastUpdatedTimestamp'])
             ])
       except botocore.exceptions.ClientError:
         # Ignore this stack if exception occurred.
@@ -393,6 +396,17 @@ class StackGroup(object):
     print(blue('Exports:', bold = True))
     print(table)
 
+  def dryrun(self, show_details = False):
+    '''
+    Turn on DRY-RUN mode for create_xxx, update_xxx task.
+    :param show_details: Set True to show change details. (Default False) 
+    '''
+    env.DryRun = True
+    env.DryRunShowDetails = show_details or show_details == 'True'
+    print(yellow('===== DRY-RUN mode ====='))
+
+  def in_dryrun(self):
+    return True if (env.has_key('DryRun') and env.DryRun == True) else False
 
 class StackDef(object):
   def __init__(self, stack_group, stack_alias, stack_name, template_path, **kwargs):
@@ -459,25 +473,65 @@ class StackDef(object):
       })
 
     # TODO Async execution.
-    # Create stack.
+    # TODO Refactor.
     stack_args = self.__merge_stack_args(**self.kwargs)
-    print('Creating stack...')
-    print('  Stack Name: %s' % self.actual_stack_name())
-    print('  Template  : %s' % self.template_s3_url())
-    print('  Parameters: %s' % stack_params)
-    print("  Arguments : %s" % stack_args)
-    self.stack_group.cfn_resource.create_stack(
-      StackName = self.actual_stack_name(),
-      TemplateURL = self.template_s3_url(),
-      Parameters = stack_params,
-      **stack_args
-    )
+    # DRY-RUN. Create ChangeSet and show it.
+    if (self.stack_group.in_dryrun()):
+      # Create ChangeSet.
+      print('Creating stack (DRY-RUN)...')
+      print('  Stack Name: %s' % self.actual_stack_name())
+      print('  Template  : %s' % self.template_s3_url())
+      print('  Parameters: %s' % stack_params)
+      print("  Arguments : %s" % stack_args)
+      changeset_name = "dryrun-%s" % ("{0:%Y%m%d%H%M%S}".format(datetime.datetime.now()))
+      self.stack_group.cfn_client.create_change_set(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name,
+        ChangeSetType = 'CREATE',
+        TemplateURL = self.template_s3_url(),
+        Parameters = stack_params,
+        **stack_args
+      )
 
-    # Wait create complete.
-    print('Waiting for complete... (ctrl+C to exit)')
-    self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
-      StackName = self.actual_stack_name()
-    )
+      # Wait create ChangeSet complete.
+      print('Computing changes...')
+      self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name
+      )
+
+      # Show ChangeSet.
+      change_set = self.stack_group.cfn_client.describe_change_set(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name
+      )
+      self.__show_change_set(change_set)
+
+      # # Delete ChangeSet with Stack.
+      # self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete(
+      #   self.__filter_stack_args_for_delete(**stack_args)
+      # )
+
+    # Create stack.
+    else:
+      print('Creating stack...')
+      print('  Stack Name: %s' % self.actual_stack_name())
+      print('  Template  : %s' % self.template_s3_url())
+      print('  Parameters: %s' % stack_params)
+      print("  Arguments : %s" % stack_args)
+      self.stack_group.cfn_resource.create_stack(
+        StackName = self.actual_stack_name(),
+        TemplateURL = self.template_s3_url(),
+        Parameters = stack_params,
+        **stack_args
+      )
+
+      # Wait create complete.
+      print('Waiting for complete... (ctrl+C to exit)')
+      self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
+        StackName = self.actual_stack_name()
+      )
+
     print('Finish.')
 
   def update(self, **kwparams):
@@ -534,46 +588,84 @@ class StackDef(object):
         'ParameterValue': param_value
       })
 
-    # TODO Confirm update.
     # TODO Async execution.
-    # Update stack.
+    # TODO Refactor.
     stack_args = self.__merge_stack_args(**self.kwargs)
-    print('Updating stack...')
-    print('  Stack Name: %s' % self.actual_stack_name())
-    print('  Template  : %s' % self.template_s3_url())
-    print('  Parameters: %s' % stack_params)
-    print('  Arguments : %s' % stack_args)
-    try:
-      stack.update(
+    if (self.stack_group.in_dryrun()):
+      # Create ChangeSet and show it.
+      print('Updating stack (DRY-RUN)...')
+      print('  Stack Name: %s' % self.actual_stack_name())
+      print('  Template  : %s' % self.template_s3_url())
+      print('  Parameters: %s' % stack_params)
+      print('  Arguments : %s' % stack_args)
+      changeset_name = "dryrun-%s" % ("{0:%Y%m%d%H%M%S}".format(datetime.datetime.now()))
+      self.stack_group.cfn_client.create_change_set(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name,
+        ChangeSetType = 'UPDATE',
         TemplateURL = self.template_s3_url(),
         Parameters = stack_params,
         **stack_args
       )
-    except botocore.exceptions.ClientError as e:
-      if 'No updates are to be performed' in e.args[0]:
+
+      # Wait create ChangeSet complete.
+      print('Computing changes...')
+      try:
+        self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
+          StackName = self.actual_stack_name(),
+          ChangeSetName = changeset_name
+        )
+      except botocore.exceptions.WaiterError as e:
+        # Raise WaiterError when no changes. Ignore it.
+        pass
+
+      # Show ChangeSet.
+      change_set = self.stack_group.cfn_client.describe_change_set(
+        StackName = self.actual_stack_name(),
+        ChangeSetName = changeset_name
+      )
+      if change_set.has_key('StatusReason') and 'didn\'t contain changes' in change_set['StatusReason']:
         print(yellow('No changes.'))
       else:
-        raise e
+        self.__show_change_set(change_set)
+
+      # # Delete ChaneSet.
+      # self.stack_group.cfn_client.delete_change_set(
+      #   StackName = self.actual_stack_name(),
+      #   ChangeSetName = changeset_name
+      # )
+
+    # Update stack.
     else:
-      # Wait update complete.
-      print('Waiting for complete... (ctrl+C to exit)')
-      self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
-        StackName = self.actual_stack_name()
-      )
-      print('Finish.')
+      print('Updating stack...')
+      print('  Stack Name: %s' % self.actual_stack_name())
+      print('  Template  : %s' % self.template_s3_url())
+      print('  Parameters: %s' % stack_params)
+      print('  Arguments : %s' % stack_args)
+      try:
+        stack.update(
+          TemplateURL = self.template_s3_url(),
+          Parameters = stack_params,
+          **stack_args
+        )
+      except botocore.exceptions.ClientError as e:
+        if 'No updates are to be performed' in e.args[0]:
+          print(yellow('No changes.'))
+        else:
+          raise e
+      else:
+        # Wait update complete.
+        print('Waiting for complete... (ctrl+C to exit)')
+        self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
+          StackName = self.actual_stack_name()
+        )
+
+    print('Finish.')
 
   def delete(self):
-    def filter_stack_args_for_delete(**kwargs):
-      accept_arg_names = ['RetainResources', 'RoleARN']
-      filtered = {}
-      for key, value in kwargs.items():
-        if key in accept_arg_names:
-          filtered[key] = value
-      return filtered
-
     # TODO Async execution.
     # Delete stack.
-    stack_args = filter_stack_args_for_delete(**self.__merge_stack_args(**self.kwargs))
+    stack_args = self.__filter_stack_args_for_delete(**self.__merge_stack_args(**self.kwargs))
     print('Deleting stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
     print('  Arguments : %s' % stack_args)
@@ -587,6 +679,63 @@ class StackDef(object):
       StackName = self.actual_stack_name()
     )
     print('Finish.')
+
+  def __filter_stack_args_for_delete(self, **kwargs):
+    accept_arg_names = ['RetainResources', 'RoleARN']
+    filtered = {}
+    for key, value in kwargs.items():
+      if key in accept_arg_names:
+        filtered[key] = value
+    return filtered
+
+  def __show_change_set(self, change_set):
+    print(blue('Stack:', bold = True))
+    table = PrettyTable()
+    table.add_column('StackName', [change_set['StackName']])
+    table.align['StackName'] = 'l'
+    table.add_column('ChangeSetName', [change_set['ChangeSetName']])
+    table.align['ChangeSetName'] = 'l'
+    table.add_column('ChangeSetStatus', [self.stack_group.colord_status(change_set['Status'])])
+    print(table)
+
+    print(blue('Parameters:', bold = True))
+    if change_set.has_key('Parameters') is None:
+      print('No parameters.')
+    else:
+      table = PrettyTable(['Key', 'Value'])
+      table.align['Key'] = 'l'
+      table.align['Value'] = 'l'
+      for param in change_set['Parameters']:
+        table.add_row([
+          param['ParameterKey'],
+          param['ParameterValue']
+        ])
+      print(table)
+
+    print(blue('Changes:', bold = True))
+    if change_set.has_key('Changes') is None:
+      print(yellow('No changes.'))
+    else:
+      table = PrettyTable(['Action', 'LogicalID', 'PhysicalID', 'ResourceType', 'Replacement'])
+      table.align['LogicalID'] = 'l'
+      table.align['PhysicalID'] = 'l'
+      table.align['ResourceType'] = 'l'
+      for change in change_set['Changes']:
+        resource_change = change['ResourceChange']
+        table.add_row([
+          resource_change['Action'],
+          resource_change['LogicalResourceId'],
+          self.stack_group.shorten(resource_change['PhysicalResourceId'], 70, 10) if resource_change.has_key('PhysicalResourceId') else '-',
+          resource_change['ResourceType'],
+          resource_change['Replacement'] if resource_change.has_key('Replacement') else '-'
+        ])
+      print(table)
+
+      if (env.DryRunShowDetails):
+        print(blue('Details:', bold = True))
+        print('---------------------------------------------------------------------------------------')
+        print(json.dumps(change_set['Changes'], indent=2, sort_keys=True))
+        print('---------------------------------------------------------------------------------------')
 
   def get_stack_operations(self):
     return [self.create, self.update, self.delete]
