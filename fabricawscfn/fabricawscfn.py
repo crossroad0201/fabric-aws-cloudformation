@@ -473,6 +473,7 @@ class StackDef(object):
       })
 
     # TODO Async execution.
+    # TODO Refactor.
     stack_args = self.__merge_stack_args(**self.kwargs)
     # DRY-RUN. Create ChangeSet and show it.
     if (self.stack_group.in_dryrun()):
@@ -493,6 +494,7 @@ class StackDef(object):
       )
 
       # Wait create ChangeSet complete.
+      print('Computing changes...')
       self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name
@@ -587,6 +589,7 @@ class StackDef(object):
       })
 
     # TODO Async execution.
+    # TODO Refactor.
     stack_args = self.__merge_stack_args(**self.kwargs)
     if (self.stack_group.in_dryrun()):
       # Create ChangeSet and show it.
@@ -606,6 +609,7 @@ class StackDef(object):
       )
 
       # Wait create ChangeSet complete.
+      print('Computing changes...')
       try:
         self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
           StackName = self.actual_stack_name(),
@@ -721,7 +725,7 @@ class StackDef(object):
         table.add_row([
           resource_change['Action'],
           resource_change['LogicalResourceId'],
-          resource_change['PhysicalResourceId'] if resource_change.has_key('PhysicalResourceId') else '-',
+          self.stack_group.shorten(resource_change['PhysicalResourceId'], 70, 10) if resource_change.has_key('PhysicalResourceId') else '-',
           resource_change['ResourceType'],
           resource_change['Replacement'] if resource_change.has_key('Replacement') else '-'
         ])
