@@ -29,9 +29,9 @@ class StackGroup(object):
     self.templates_local_dir = templates_local_dir
     self.default_stack_args_ = {}
 
-    # Init boto3 clients.
-    self.cfn_client = boto3.client('cloudformation')
-    self.cfn_resource = boto3.resource('cloudformation')
+    # boto3 client cache.
+    self.__cfn_client = None
+    self.__cfn_resource = None
 
   def __add_fabric_task(self, namespace, task_name, task_method):
     wrapper = task(name = task_name)
@@ -102,6 +102,8 @@ class StackGroup(object):
     :return: self
     '''
     # Add general tasks.
+    self.__add_fabric_task(namespace, 'region', self.region)
+    self.__add_fabric_task(namespace, 'account', self.account)
     self.__add_fabric_task(namespace, 'params', self.params)
     self.__add_fabric_task(namespace, 'console', self.console)
     self.__add_fabric_task(namespace, 'validate_template', self.validate_template)
@@ -121,6 +123,49 @@ class StackGroup(object):
         self.__add_fabric_task(namespace, task_name, operation)
 
     return self
+
+  def cfn_client(self):
+    if self.__cfn_client is None:
+      self.__cfn_client = boto3.client(
+        'cloudformation',
+        region_name = env.get('Region'),
+        aws_access_key_id = env.get('AccessKeyId'),
+        aws_secret_access_key = env.get('SecretAccessKey')
+      )
+    return self.__cfn_client
+
+  def cfn_resource(self):
+    if self.__cfn_resource is None:
+      self.__cfn_resource = boto3.resource(
+        'cloudformation',
+        region_name = env.get('Region'),
+        aws_access_key_id = env.get('AccessKeyId'),
+        aws_secret_access_key = env.get('SecretAccessKey')
+      )
+    return self.__cfn_resource
+
+  def region(self, region):
+    '''
+    Change AWS Region. (Default use AWS credentials default profile)
+    
+    :param region: AWS region.
+    '''
+    print(green('AWS Region changed to %s.' % region, bold = True))
+    env.Region = region
+    self.__cfn_client = None
+    self.__cfn_resource = None
+
+  def account(self, access_key_id, secret_access_key):
+    '''
+    Change AWS account. (Default use AWS credentials default profile)
+    
+    :param access_key_id: Access key ID.
+    :param secret_access_key: Secret Access Key.
+    '''
+    env.AccessKeyId = access_key_id
+    env.SecretAccessKey = secret_access_key
+    self.__cfn_client = None
+    self.__cfn_resource = None
 
   def params(self, **kwparams):
     '''
@@ -173,7 +218,7 @@ class StackGroup(object):
     '''
     List stacks.
     '''
-    paginator = self.cfn_client.get_paginator('list_stacks')
+    paginator = self.cfn_client().get_paginator('list_stacks')
     pages = paginator.paginate(
       StackStatusFilter = [
         'CREATE_IN_PROGRESS', 'CREATE_FAILED', 'CREATE_COMPLETE',
@@ -246,7 +291,7 @@ class StackGroup(object):
     else:
       stack_name = alias_or_stackname
 
-    stack = self.cfn_resource.Stack(stack_name)
+    stack = self.cfn_resource().Stack(stack_name)
     try:
       stack.stack_id
     except botocore.exceptions.ClientError:
@@ -320,7 +365,7 @@ class StackGroup(object):
     '''
     List existing stack resources.
     '''
-    paginator = self.cfn_client.get_paginator('list_stack_resources')
+    paginator = self.cfn_client().get_paginator('list_stack_resources')
 
     table = PrettyTable(['StackName', 'LogicalID', 'PhysicalID', 'Type', 'Status', 'UpdatedTime'])
     table.align['StackName'] = 'l'
@@ -373,11 +418,11 @@ class StackGroup(object):
             nt = a.get("NextToken", None)
             exists_next = nt is not None and len(nt) > 0
             if exists_next:
-                b = self.cfn_client.list_exports(NextToken = nt)
+                b = self.cfn_client().list_exports(NextToken = nt)
                 return _recursive(b, res)
             else:
                 return res
-        return _recursive(self.cfn_client.list_exports())
+        return _recursive(self.cfn_client().list_exports())
 
     exports = recursive_list_exports()
 
@@ -436,7 +481,7 @@ class StackDef(object):
     self.stack_group.params(**kwparams)
 
     # Get template definition.
-    template = self.stack_group.cfn_client.get_template_summary(
+    template = self.stack_group.cfn_client().get_template_summary(
       TemplateURL = self.template_s3_url()
     )
 
@@ -484,7 +529,7 @@ class StackDef(object):
       print('  Parameters: %s' % stack_params)
       print("  Arguments : %s" % stack_args)
       changeset_name = "dryrun-%s" % ("{0:%Y%m%d%H%M%S}".format(datetime.datetime.now()))
-      self.stack_group.cfn_client.create_change_set(
+      self.stack_group.cfn_client().create_change_set(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name,
         ChangeSetType = 'CREATE',
@@ -495,20 +540,20 @@ class StackDef(object):
 
       # Wait create ChangeSet complete.
       print('Computing changes...')
-      self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
+      self.stack_group.cfn_client().get_waiter('change_set_create_complete').wait(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name
       )
 
       # Show ChangeSet.
-      change_set = self.stack_group.cfn_client.describe_change_set(
+      change_set = self.stack_group.cfn_client().describe_change_set(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name
       )
       self.__show_change_set(change_set)
 
       # # Delete ChangeSet with Stack.
-      # self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete(
+      # self.stack_group.cfn_resource().Stack(self.actual_stack_name()).delete(
       #   self.__filter_stack_args_for_delete(**stack_args)
       # )
 
@@ -519,7 +564,7 @@ class StackDef(object):
       print('  Template  : %s' % self.template_s3_url())
       print('  Parameters: %s' % stack_params)
       print("  Arguments : %s" % stack_args)
-      self.stack_group.cfn_resource.create_stack(
+      self.stack_group.cfn_resource().create_stack(
         StackName = self.actual_stack_name(),
         TemplateURL = self.template_s3_url(),
         Parameters = stack_params,
@@ -528,7 +573,7 @@ class StackDef(object):
 
       # Wait create complete.
       print('Waiting for complete... (ctrl+C to exit)')
-      self.stack_group.cfn_client.get_waiter('stack_create_complete').wait(
+      self.stack_group.cfn_client().get_waiter('stack_create_complete').wait(
         StackName = self.actual_stack_name()
       )
 
@@ -539,7 +584,7 @@ class StackDef(object):
     self.stack_group.params(**kwparams)
 
     # Get exists stack.
-    stack = self.stack_group.cfn_resource.Stack(self.actual_stack_name())
+    stack = self.stack_group.cfn_resource().Stack(self.actual_stack_name())
     def get_previous_param_value(param_key):
       for param in stack.parameters:
         if param['ParameterKey'] == param_key:
@@ -547,7 +592,7 @@ class StackDef(object):
       return None
 
     # Get template definition.
-    template = self.stack_group.cfn_client.get_template_summary(
+    template = self.stack_group.cfn_client().get_template_summary(
       TemplateURL = self.template_s3_url()
     )
 
@@ -599,7 +644,7 @@ class StackDef(object):
       print('  Parameters: %s' % stack_params)
       print('  Arguments : %s' % stack_args)
       changeset_name = "dryrun-%s" % ("{0:%Y%m%d%H%M%S}".format(datetime.datetime.now()))
-      self.stack_group.cfn_client.create_change_set(
+      self.stack_group.cfn_client().create_change_set(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name,
         ChangeSetType = 'UPDATE',
@@ -611,7 +656,7 @@ class StackDef(object):
       # Wait create ChangeSet complete.
       print('Computing changes...')
       try:
-        self.stack_group.cfn_client.get_waiter('change_set_create_complete').wait(
+        self.stack_group.cfn_client().get_waiter('change_set_create_complete').wait(
           StackName = self.actual_stack_name(),
           ChangeSetName = changeset_name
         )
@@ -620,7 +665,7 @@ class StackDef(object):
         pass
 
       # Show ChangeSet.
-      change_set = self.stack_group.cfn_client.describe_change_set(
+      change_set = self.stack_group.cfn_client().describe_change_set(
         StackName = self.actual_stack_name(),
         ChangeSetName = changeset_name
       )
@@ -630,7 +675,7 @@ class StackDef(object):
         self.__show_change_set(change_set)
 
       # # Delete ChaneSet.
-      # self.stack_group.cfn_client.delete_change_set(
+      # self.stack_group.cfn_client().delete_change_set(
       #   StackName = self.actual_stack_name(),
       #   ChangeSetName = changeset_name
       # )
@@ -656,7 +701,7 @@ class StackDef(object):
       else:
         # Wait update complete.
         print('Waiting for complete... (ctrl+C to exit)')
-        self.stack_group.cfn_client.get_waiter('stack_update_complete').wait(
+        self.stack_group.cfn_client().get_waiter('stack_update_complete').wait(
           StackName = self.actual_stack_name()
         )
 
@@ -669,13 +714,13 @@ class StackDef(object):
     print('Deleting stack...')
     print('  Stack Name: %s' % self.actual_stack_name())
     print('  Arguments : %s' % stack_args)
-    self.stack_group.cfn_resource.Stack(self.actual_stack_name()).delete(
+    self.stack_group.cfn_resource().Stack(self.actual_stack_name()).delete(
       **stack_args
     )
 
     # Wait delete complete.
     print('Waiting for complete... (ctrl+C to exit)')
-    self.stack_group.cfn_client.get_waiter('stack_delete_complete').wait(
+    self.stack_group.cfn_client().get_waiter('stack_delete_complete').wait(
       StackName = self.actual_stack_name()
     )
     print('Finish.')
