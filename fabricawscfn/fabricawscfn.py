@@ -146,18 +146,20 @@ class StackGroup(object):
 
   def region(self, region):
     '''
-    Change AWS Region. (Default use AWS credentials default profile)
+    Set AWS Region. (Default use AWS credentials default profile)
     
     :param region: AWS region.
     '''
-    print(green('AWS Region changed to %s.' % region, bold = True))
+    print(green('Use AWS Region is %s.' % region, bold = True))
     env.Region = region
     self.__cfn_client = None
     self.__cfn_resource = None
 
+    return self
+
   def account(self, access_key_id, secret_access_key):
     '''
-    Change AWS account. (Default use AWS credentials default profile)
+    Set AWS account. (Default use AWS credentials default profile)
     
     :param access_key_id: Access key ID.
     :param secret_access_key: Secret Access Key.
@@ -167,6 +169,8 @@ class StackGroup(object):
     self.__cfn_client = None
     self.__cfn_resource = None
 
+    return self
+
   def params(self, **kwparams):
     '''
     Set parameters. (Applies to all tasks)
@@ -175,6 +179,8 @@ class StackGroup(object):
     '''
     for param_name, param_value in kwparams.iteritems():
       env[param_name] = param_value
+
+    return self
 
   def console(self):
     '''
