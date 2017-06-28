@@ -79,9 +79,20 @@ Instantiate `StackGroup`.
 * Parameters.
   * `templates_s3_bucket` - Prepared S3 bucket name.
   * `templates_s3_prefix` - Prefix(Folder) name in prepared S3 bucket. CloudFormation templates store in.
-  * `templates_local_dir`(OPTIONAL) - Local dir(relative path) where CloudFormation template(s) location.
+  * `templates_local_dir` - **OPTIONAL:** Local dir(relative path) where CloudFormation template(s) location.
 
 * `templates_s3_bucket` and `templates_s3_refix` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
+
+* **OPTIONAL:** You can specify default AWS region and account if necessary.
+  * Default, use AWS credentials default profile.
+  * You can override it, use `region` and `account` task.
+
+```python
+StackGroup(...)\
+  .region('us-west-2')\
+  .account('ACCESS_KEY_ID', 'SECRET_ACCESS_KEY')\
+    :
+```
 
 ### 3-2.Define Stack
 
@@ -91,7 +102,7 @@ Define Stack(s) using `StackGroup#define_stack()`.
   * `alias` - Alias(Short name) of Stack. This name using task parameter.
   * `stack_name` - CloudFormation Stack name.
   * `template_path` - Template file path.(Relative path from `templates_local_dir`)
-  * `**kwargs` - Additional arguments for Create/Update/Delete stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
+  * `**kwargs` - **OPTIONAL:** Additional arguments for Create/Update/Delete stack. See [Boto3 reference](https://boto3.readthedocs.io/en/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack).
     * If you want to set default stack arguments for all stacks, using `StackGroup#default_stack_args()`.
 
 * `stack_name` can contains placeholder(Like this `foo-%(environment)s`). Replace by Fabric env.
@@ -114,17 +125,20 @@ Example fabfile.py using fabricawscfn.
 
 Available commands:
 
+    account            Set AWS account. (Default use AWS credentials default ...
     console            Open AWS Console on your default Web browser.
     create_bar         create stack bar.
     create_foo         create stack foo.
     delete_bar         delete stack bar.
     delete_foo         delete stack foo.
     desc_stack         Describe existing stack.
+    dryrun             Turn on DRY-RUN mode for create_xxx, update_xxx task.
     env_on             Set environment.(Default dev)
     list_exports       List exports.
     list_resources     List existing stack resources.
     list_stacks        List stacks.
     params             Set parameters. (Applies to all tasks)
+    region             Set AWS Region. (Default use AWS credentials default p...
     sync_templates     Synchronize templates local dir to S3 bucket.
     update_bar         update stack bar.
     update_foo         update stack foo.
@@ -243,6 +257,15 @@ Finish.
 ```
 
 ## Optional Tasks
+
+### `region` and `account`
+
+Specify AWS region and account. If not specified, use AWS credentials default profile.
+
+```bach
+$ fab region:us-west-2 create_xxxx
+$ fab account:ACCESS_KEY_ID,SECRET_ACCESS_KEY create_xxxx
+```
 
 ### `params`
 
