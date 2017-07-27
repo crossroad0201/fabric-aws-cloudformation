@@ -750,7 +750,7 @@ class StackDef(object):
     print(table)
 
     print(blue('Parameters:', bold = True))
-    if change_set.has_key('Parameters') is None:
+    if change_set.has_key('Parameters') is False:
       print('No parameters.')
     else:
       table = PrettyTable(['Key', 'Value'])
@@ -764,7 +764,7 @@ class StackDef(object):
       print(table)
 
     print(blue('Changes:', bold = True))
-    if change_set.has_key('Changes') is None:
+    if change_set.has_key('Changes') is False:
       print(yellow('No changes.'))
     else:
       table = PrettyTable(['Action', 'LogicalID', 'PhysicalID', 'ResourceType', 'Replacement'])

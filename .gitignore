@@ -1,4 +1,5 @@
 .idea/
 work/
+*.egg-info/
 *.pyc
 *.iml
