@@ -258,11 +258,13 @@ Finish.
 
 ## Optional Tasks
 
-### `region` and `account`
+### `profile`, `region` and `account`
 
-Specify AWS region and account. If not specified, use AWS credentials default profile.
+Specify AWS profile, region and account.  
+If not specified, use AWS credentials default profile.
 
 ```bach
+$ fab profile:your-profile create_xxxx
 $ fab region:us-west-2 create_xxxx
 $ fab account:ACCESS_KEY_ID,SECRET_ACCESS_KEY create_xxxx
 ```
