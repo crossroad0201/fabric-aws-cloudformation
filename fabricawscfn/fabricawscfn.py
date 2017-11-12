@@ -5,13 +5,16 @@ from sets import Set
 import datetime
 import json
 
-import boto3
 import botocore
-from prettytable import PrettyTable
+import boto3
+from boto3.session import Session
+
 from fabric.api import *
 from fabric.operations import *
 from fabric.utils import *
 from fabric.colors import green, blue, yellow, red
+
+from prettytable import PrettyTable
 
 
 class StackGroup(object):
@@ -106,6 +109,7 @@ class StackGroup(object):
         :return: self
         """
         # Add general tasks.
+        self.__add_fabric_task(namespace, 'profile', self.profile, 'p')
         self.__add_fabric_task(namespace, 'region', self.region, 'r')
         self.__add_fabric_task(namespace, 'account', self.account, 'a')
         self.__add_fabric_task(namespace, 'params', self.params, 'pm')
@@ -130,23 +134,37 @@ class StackGroup(object):
 
     def cfn_client(self):
         if self.__cfn_client is None:
-            self.__cfn_client = boto3.client(
-                'cloudformation',
+            session = Session(
+                profile_name = env.get('Profile'),
                 region_name = env.get('Region'),
                 aws_access_key_id = env.get('AccessKeyId'),
                 aws_secret_access_key = env.get('SecretAccessKey')
             )
+            self.__cfn_client = session.client('cloudformation')
         return self.__cfn_client
 
     def cfn_resource(self):
         if self.__cfn_resource is None:
-            self.__cfn_resource = boto3.resource(
-                'cloudformation',
+            session = Session(
+                profile_name = env.get('Profile'),
                 region_name = env.get('Region'),
                 aws_access_key_id = env.get('AccessKeyId'),
                 aws_secret_access_key = env.get('SecretAccessKey')
             )
+            self.__cfn_resource = session.resource('cloudformation')
         return self.__cfn_resource
+
+    def profile(self, profile):
+        """
+        Set AWS Profile. (Default use AWS credentials default profile)
+        :param profile: Profile name.
+        """
+        print(green('Use AWS Profile is %s.' % profile, bold = True))
+        env.Profile = profile
+        self.__cfn_client = None
+        self.__cfn_resource = None
+
+        return self
 
     def region(self, region):
         """
