@@ -289,3 +289,18 @@ $ fab dryrun:show_details create_xxxx update_yyyy
 ```bash
 fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy list_stacks list_resources list_exports
 ```
+
+
+## Change log
+
+### 2017/11/12
+
+* [NEW] Provide task alias.
+
+### 2017/06/28
+
+* [NEW] Add specify AWS account, region task.
+
+### 2017/05/31
+
+* [NEW] Add dryrun task.

@@ -34,8 +34,11 @@ class StackGroup(object):
         self.__cfn_client = None
         self.__cfn_resource = None
 
-    def __add_fabric_task(self, namespace, task_name, task_method):
-        wrapper = task(name = task_name)
+    def __add_fabric_task(self, namespace, task_name, task_method, task_alias = None):
+        if task_alias:
+            wrapper = task(name = task_name, alias = task_alias)
+        else:
+            wrapper = task(name = task_name)
         rand = '%d' % (time.time() * 100000)
         namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
 
@@ -103,17 +106,17 @@ class StackGroup(object):
         :return: self
         """
         # Add general tasks.
-        self.__add_fabric_task(namespace, 'region', self.region)
-        self.__add_fabric_task(namespace, 'account', self.account)
-        self.__add_fabric_task(namespace, 'params', self.params)
-        self.__add_fabric_task(namespace, 'console', self.console)
-        self.__add_fabric_task(namespace, 'validate_template', self.validate_template)
-        self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates)
-        self.__add_fabric_task(namespace, 'list_stacks', self.list_stacks)
-        self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack)
-        self.__add_fabric_task(namespace, 'list_resources', self.list_resources)
-        self.__add_fabric_task(namespace, 'list_exports', self.list_exports)
-        self.__add_fabric_task(namespace, 'dryrun', self.dryrun)
+        self.__add_fabric_task(namespace, 'region', self.region, 'r')
+        self.__add_fabric_task(namespace, 'account', self.account, 'a')
+        self.__add_fabric_task(namespace, 'params', self.params, 'pm')
+        self.__add_fabric_task(namespace, 'console', self.console, 'c')
+        self.__add_fabric_task(namespace, 'validate_template', self.validate_template, 'vt')
+        self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates, 'st')
+        self.__add_fabric_task(namespace, 'list_stacks', self.list_stacks, 'ls')
+        self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack, 'ds')
+        self.__add_fabric_task(namespace, 'list_resources', self.list_resources, 'lr')
+        self.__add_fabric_task(namespace, 'list_exports', self.list_exports, 'le')
+        self.__add_fabric_task(namespace, 'dryrun', self.dryrun, 'd')
 
         # Add stack tasks.
         for stack_def in self.stack_defs.values():
