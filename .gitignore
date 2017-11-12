@@ -3,3 +3,4 @@ work/
 *.egg-info/
 *.pyc
 *.iml
+.python-version
