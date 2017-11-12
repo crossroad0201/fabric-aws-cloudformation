@@ -295,12 +295,13 @@ fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy li
 
 ### 2017/11/12
 
+* [NEW] Add `profile` task. Specify AWS profile.
 * [NEW] Provide task alias.
 
 ### 2017/06/28
 
-* [NEW] Add specify AWS account, region task.
+* [NEW] Add `account` and `region` task. Specify AWS account, region.
 
 ### 2017/05/31
 
-* [NEW] Add dryrun task.
+* [NEW] Add `dryrun` task.
