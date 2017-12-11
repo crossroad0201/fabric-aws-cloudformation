@@ -247,18 +247,29 @@ class StackGroup(object):
         List stacks.
         """
         paginator = self.cfn_client().get_paginator('list_stacks')
-        pages = paginator.paginate(
-            StackStatusFilter = [
-                'CREATE_IN_PROGRESS', 'CREATE_FAILED', 'CREATE_COMPLETE',
-                'ROLLBACK_IN_PROGRESS', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
-                'DELETE_IN_PROGRESS', 'DELETE_FAILED', # 'DELETE_COMPLETE',
-                'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_COMPLETE',
-                'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE',
-                'REVIEW_IN_PROGRESS'],
-            PaginationConfig = {
-                'MaxItems': 500
-            }
-        )
+
+        print('Fetching stacks...')
+        pages = []
+        next_token = None
+        while True:
+            page_iter = paginator.paginate(
+                StackStatusFilter = [
+                    'CREATE_IN_PROGRESS', 'CREATE_FAILED', 'CREATE_COMPLETE',
+                    'ROLLBACK_IN_PROGRESS', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+                    'DELETE_IN_PROGRESS', 'DELETE_FAILED', # 'DELETE_COMPLETE',
+                    'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_COMPLETE',
+                    'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE',
+                    'REVIEW_IN_PROGRESS'],
+                PaginationConfig = {
+                    'MaxItems': 500,
+                    'StartingToken': next_token
+                }
+            )
+            for page in page_iter:
+                pages.append(page)
+            next_token = pages[-1].get('NextToken', None)
+            if not next_token:
+                break
 
         # TODO Refactoring.
         defined_stack_names = Set()
@@ -400,15 +411,26 @@ class StackGroup(object):
         table.align['PhysicalID'] = 'l'
         table.align['Type'] = 'l'
 
+        print('Fetching resources...')
         for stack_def in self.stack_defs.values():
             stack_name = stack_def.actual_stack_name()
             try:
-                pages = paginator.paginate(
-                    StackName = stack_name,
-                    PaginationConfig = {
-                        'MaxItems': 100
-                    }
-                )
+                pages = []
+                next_token = None
+                while True:
+                    page_iter = paginator.paginate(
+                        StackName = stack_name,
+                        PaginationConfig = {
+                            'MaxItems': 500,
+                            'StartingToken': next_token
+                        }
+                    )
+                    for page in page_iter:
+                        pages.append(page)
+                    next_token = pages[-1].get('NextToken', None)
+                    if not next_token:
+                        break
+
                 for page in pages:
                     summaries = page['StackResourceSummaries']
                     for summary in summaries:
@@ -451,6 +473,7 @@ class StackGroup(object):
                     return res
             return _recursive(self.cfn_client().list_exports())
 
+        print('Fetching exports...')
         exports = recursive_list_exports()
 
         table = PrettyTable(['ExportedStackName', 'ExportName', 'ExportValue'])
