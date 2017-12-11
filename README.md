@@ -295,6 +295,11 @@ fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy li
 
 ## Change log
 
+### 2017/12/11
+
+* [FIX] `ls_stacks` does not show all stacks.
+* [FIX] `ls_resources` does not show all resources.
+
 ### 2017/11/12
 
 * [NEW] Add `profile` task. Specify AWS profile.
