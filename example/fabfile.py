@@ -21,6 +21,7 @@ def env_on(env_name):
     :param env_name: Environment name.
     """
     env.EnvName = env_name
+    # Enable confirmation if environment is production.
     if env_name == 'production':
         stack_group.need_confirm('Execute task on production?')
 

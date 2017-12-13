@@ -304,7 +304,7 @@ fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy li
 
 ### Using confirmation at task execution
 
-* Enable confirming using `StackGroup#need_confirm()`.
+* Enable confirmation using `StackGroup#need_confirm()`.
 
 ```Python
 StackGroup(...)\
@@ -324,6 +324,8 @@ Execute task? [y/N]
 ```bash
 $ fab force update_bar delete_foo
 ```
+
+Usage see [example/fabfile.py](./exampe/fabfile.py).
 
 # Change log
 
