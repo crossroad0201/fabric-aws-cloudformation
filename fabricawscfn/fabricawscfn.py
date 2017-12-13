@@ -17,6 +17,33 @@ from fabric.colors import green, blue, yellow, red
 from prettytable import PrettyTable
 
 
+def confirm(func):
+    """
+    Decorator that confirms execute task if called StackGroup#need_confirm().
+
+    :param func: Task function.
+    :return: Decorated function.
+    """
+    import functools
+
+    def confirmed():
+        from fabric.contrib.console import confirm as _confirm
+        if env.NeedConfirm and not env.Confirmed:
+            env.Confirmed = _confirm(yellow(env.ConfirmMessage), False)
+        else:
+            env.Confirmed = True
+        return env.Confirmed
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if confirmed():
+            func(*args, **kwargs)
+        else:
+            abort(red('Canceled.'))
+
+    return wrapper
+
+
 class StackGroup(object):
     def __init__(self, templates_s3_bucket, templates_s3_prefix, templates_local_dir = '.'):
         """
@@ -37,6 +64,11 @@ class StackGroup(object):
         self.__cfn_client = None
         self.__cfn_resource = None
 
+        # Task execute confirm.
+        env.NeedConfirm = False
+        env.ConfirmMessage = None
+        env.Confirmed = False
+
     def __add_fabric_task(self, namespace, task_name, task_method, task_alias = None):
         if task_alias:
             wrapper = task(name = task_name, alias = task_alias)
@@ -44,6 +76,10 @@ class StackGroup(object):
             wrapper = task(name = task_name)
         rand = '%d' % (time.time() * 100000)
         namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
+
+    def need_confirm(self, confirm_message):
+        env.NeedConfirm = True
+        env.ConfirmMessage = confirm_message
 
     def colord_status(self, status):
         if status.endswith('_COMPLETE'):
@@ -112,6 +148,7 @@ class StackGroup(object):
         self.__add_fabric_task(namespace, 'profile', self.profile, 'p')
         self.__add_fabric_task(namespace, 'region', self.region, 'r')
         self.__add_fabric_task(namespace, 'account', self.account, 'a')
+        self.__add_fabric_task(namespace, 'force', self.force)
         self.__add_fabric_task(namespace, 'params', self.params, 'pm')
         self.__add_fabric_task(namespace, 'console', self.console, 'c')
         self.__add_fabric_task(namespace, 'validate_template', self.validate_template, 'vt')
@@ -193,6 +230,13 @@ class StackGroup(object):
 
         return self
 
+    def force(self):
+        """
+        Execute task without confirm.
+        """
+        env.Confirmed = True
+        return self
+
     def params(self, **kwparams):
         """
         Set parameters. (Applies to all tasks)
@@ -234,6 +278,7 @@ class StackGroup(object):
             "aws cloudformation validate-template --template-body file://%s --output table" % template_local_path
         )
 
+    @confirm
     def sync_templates(self):
         """
         Synchronize templates local dir to S3 bucket.
@@ -630,6 +675,7 @@ class StackDef(object):
 
         print('Finish.')
 
+    @confirm
     def update(self, **kwparams):
         # Override Fabric env with task parameter.
         self.stack_group.params(**kwparams)
@@ -759,6 +805,7 @@ class StackDef(object):
 
         print('Finish.')
 
+    @confirm
     def delete(self):
         # TODO Async execution.
         # Delete stack.

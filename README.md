@@ -32,6 +32,14 @@ Install `fabricawscfn` (and [Dependencies](./setup.py)) via pip.
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
 ```
 
+or
+
+```bash
+git clone https://github.com/crossroad0201/fabric-aws-cloudformation.git
+cd fabric-aws-cloudformation
+pip install .
+```
+
 ## Uninstall
 
 ```bach
@@ -292,23 +300,51 @@ $ fab dryrun:show_details create_xxxx update_yyyy
 fab params:Param1=PARAM1,Param2=PARAM2 sync_templates create_xxxx create_yyyy list_stacks list_resources list_exports
 ```
 
+# Misc
 
-## Change log
+### Using confirmation at task execution
+
+* Enable confirming using `StackGroup#need_confirm()`.
+
+```Python
+StackGroup(...)\
+    :
+  .need_confirm('Execute task?')
+```
+
+* Run with confirmation.
+
+```bash
+$ fab update_bar delete_foo
+Execute task? [y/N]
+```
+
+* Using `force` task to execute task without confirmation.
+
+```bash
+$ fab force update_bar delete_foo
+```
+
+# Change log
+
+### 2017/12/13
+
+* **\[NEW]** Supported confirmation at execute some tasks.(Synchronize templates, Update/Delete stack)
 
 ### 2017/12/11
 
-* [FIX] `ls_stacks` does not show all stacks.
-* [FIX] `ls_resources` does not show all resources.
+* **\[FIX]** `ls_stacks` does not show all stacks.
+* **\[FIX]** `ls_resources` does not show all resources.
 
 ### 2017/11/12
 
-* [NEW] Add `profile` task. Specify AWS profile.
-* [NEW] Provide task alias.
+* **\[NEW]** Add `profile` task. Specify AWS profile.
+* **\[NEW]** Provide task alias.
 
 ### 2017/06/28
 
-* [NEW] Add `account` and `region` task. Specify AWS account, region.
+* **\[NEW]** Add `account` and `region` task. Specify AWS account, region.
 
 ### 2017/05/31
 
-* [NEW] Add `dryrun` task.
+* **\[NEW]** Add `dryrun` task.
