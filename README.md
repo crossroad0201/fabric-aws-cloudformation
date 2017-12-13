@@ -325,7 +325,7 @@ Execute task? [y/N]
 $ fab force update_bar delete_foo
 ```
 
-Usage see [example/fabfile.py](./exampe/fabfile.py).
+Usage see [example/fabfile.py](./example/fabfile.py).
 
 # Change log
 
