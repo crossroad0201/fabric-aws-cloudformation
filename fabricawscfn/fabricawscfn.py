@@ -543,6 +543,7 @@ class StackGroup(object):
         """
         env.DryRun = True
         env.DryRunShowDetails = show_details or show_details == 'True'
+        env.NeedConfirm = False
         print(yellow('===== DRY-RUN mode ====='))
 
     def in_dryrun(self):

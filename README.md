@@ -32,12 +32,10 @@ Install `fabricawscfn` (and [Dependencies](./setup.py)) via pip.
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
 ```
 
-or
+## Update
 
 ```bash
-git clone https://github.com/crossroad0201/fabric-aws-cloudformation.git
-cd fabric-aws-cloudformation
-pip install .
+pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git -U
 ```
 
 ## Uninstall
