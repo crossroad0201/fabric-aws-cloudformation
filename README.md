@@ -29,12 +29,20 @@ Stacks:
 Install `fabricawscfn` (and [Dependencies](./setup.py)) via pip.
 
 ```bash
+pip install fabricawscfn
+
+ OR
+
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git
 ```
 
 ## Update
 
 ```bash
+pip install fabricawscfn -U
+
+ OR
+
 pip install git+https://github.com/crossroad0201/fabric-aws-cloudformation.git -U
 ```
 
@@ -326,6 +334,10 @@ $ fab force update_bar delete_foo
 Usage see [example/fabfile.py](./example/fabfile.py).
 
 # Change log
+
+### 2018/09/06 - Ver.0.1.0
+
+* **\[FIX]** Specified Account/Profile/Region are not used on sync_templates task.
 
 ### 2017/12/13
 

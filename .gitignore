@@ -1,6 +1,8 @@
 .idea/
-work/
+build/
+dist/
 *.egg-info/
+work/
 *.pyc
 *.iml
 .python-version
