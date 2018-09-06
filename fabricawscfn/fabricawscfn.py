@@ -285,7 +285,18 @@ class StackGroup(object):
         """
         s3url = 's3://%s/%s' % (self.actual_templates_s3_bucket(), self.actual_templates_s3_prefix())
         print('Synchronizing templates local %s to %s...' % (self.templates_local_dir, s3url))
-        local('aws s3 sync %s %s --delete --exclude "*" --include \"*.yaml\"' % (self.templates_local_dir, s3url))
+        local('%(Account)s aws %(Profile)s%(Region)s s3 sync %(LocalDir)s %(S3Url)s --delete --exclude "*" --include \"*.yaml\"' % dict(
+            Account = ' %s AWS_ACCESS_KEY_ID=%s; %s AWS_SECRET_ACCESS_KEY=%s; ' % (
+                'set' if os.name == 'nt' else 'export',
+                env.get('AccessKeyId'),
+                'set' if os.name == 'nt' else 'export',
+                env.get('SecretAccessKey')
+            ) if 'AccessKeyId' in env else '',
+            Profile = ' --profile %s' % env.get('Profile') if 'Profile' in env else '',
+            Region = ' --region %s' % env.get('Region') if 'Region' in env else '',
+            LocalDir = self.templates_local_dir,
+            S3Url = s3url
+        ))
 
     def list_stacks(self):
         """
