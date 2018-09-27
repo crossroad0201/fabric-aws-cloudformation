@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
   name             = 'fabricawscfn',
-  version          = '0.1.0',
+  version          = '0.1.1',
   description      = 'Fabric task generator for AWS CloudFormation.',
   license          = 'MIT',
   author           = 'Yohei TSUJI',

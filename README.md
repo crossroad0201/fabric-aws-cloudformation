@@ -335,6 +335,10 @@ Usage see [example/fabfile.py](./example/fabfile.py).
 
 # Change log
 
+### 2018/09/27 - Ver.0.1.1
+
+* **\[UPDATE]** If environment variable [AWS_PROFILE](https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html) is set, use it.
+
 ### 2018/09/06 - Ver.0.1.0
 
 * **\[FIX]** Specified Account/Profile/Region are not used on sync_templates task.

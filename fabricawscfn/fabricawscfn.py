@@ -183,6 +183,9 @@ class StackGroup(object):
             elif 'AWS_PROFILE' in os.environ:
                 profile_name = os.environ['AWS_PROFILE']
                 print(green('Use AWS Profile is %s. (by Environment variable AWS_PROFILE)' % profile_name, bold = True))
+            elif 'AWS_DEFAULT_PROFILE' in os.environ:
+                profile_name = os.environ['AWS_DEFAULT_PROFILE']
+                print(green('Use AWS Profile is %s. (by Environment variable AWS_DEFAULT_PROFILE)' % profile_name, bold = True))
 
             session = Session(
                 profile_name = profile_name,
