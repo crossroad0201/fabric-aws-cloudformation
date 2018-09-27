@@ -171,8 +171,21 @@ class StackGroup(object):
 
     def cfn_client(self):
         if self.__cfn_client is None:
+            import os
+
+            # Decide profile.
+            # 1. Specify 'profile' task.
+            # 2. Specify environment variable 'AWS_PROFILE'.
+            # 3. Default profile.
+            profile_name = None
+            if 'Profile' in env:
+                profile_name = env['Profile']
+            elif 'AWS_PROFILE' in os.environ:
+                profile_name = os.environ['AWS_PROFILE']
+                print(green('Use AWS Profile is %s. (by Environment variable AWS_PROFILE)' % profile_name, bold = True))
+
             session = Session(
-                profile_name = env.get('Profile'),
+                profile_name = profile_name,
                 region_name = env.get('Region'),
                 aws_access_key_id = env.get('AccessKeyId'),
                 aws_secret_access_key = env.get('SecretAccessKey')
