@@ -1,20 +1,22 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
+from .util import *
+
 from collections import OrderedDict
-from sets import Set
+import time
 import datetime
 import json
+import os
 
 import botocore
 import boto3
 from boto3.session import Session
 
-from fabric.api import *
-from fabric.operations import *
-from fabric.utils import *
-from fabric.colors import green, blue, yellow, red
+from fabric import *
+from invoke import run, Exit
 
 from prettytable import PrettyTable
+
+# For Fabric 1.x compatible.
+env = config
 
 
 def confirm(func):
@@ -27,7 +29,7 @@ def confirm(func):
     import functools
 
     def confirmed():
-        from fabric.contrib.console import confirm as _confirm
+        from invocations.console import confirm as _confirm
         if env.NeedConfirm and not env.Confirmed:
             env.Confirmed = _confirm(yellow(env.ConfirmMessage), False)
         else:
@@ -35,12 +37,21 @@ def confirm(func):
         return env.Confirmed
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         if confirmed():
-            func(*args, **kwargs)
+            func(self, **kwargs)  # FIXME
         else:
-            abort(red('Canceled.'))
+            raise Exit('Canceled.')
 
+    return wrapper
+
+
+def hoge(func):
+    import functools
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        func(self, **kwargs)  # FIXME
     return wrapper
 
 
@@ -69,19 +80,22 @@ class StackGroup(object):
         env.ConfirmMessage = None
         env.Confirmed = False
 
-    def __add_fabric_task(self, namespace, task_name, task_method, task_alias = None):
+    @staticmethod
+    def __add_fabric_task(namespace, task_name, task_method, task_alias = None):
         if task_alias:
-            wrapper = task(name = task_name, alias = task_alias)
+            wrapper = task(name = task_name, aliases = [task_alias])
         else:
             wrapper = task(name = task_name)
         rand = '%d' % (time.time() * 100000)
         namespace['task_%s_%s' % (task_name, rand)] = wrapper(task_method)
 
-    def need_confirm(self, confirm_message):
+    @staticmethod
+    def need_confirm(confirm_message):
         env.NeedConfirm = True
         env.ConfirmMessage = confirm_message
 
-    def colord_status(self, status):
+    @staticmethod
+    def colored_status(status):
         if status.endswith('_COMPLETE'):
             return green(status)
         if status.endswith('_IN_PROGRESS'):
@@ -91,25 +105,11 @@ class StackGroup(object):
         else:
             return status
 
-    def format_datetime(self, datetime):
-        return '{0:%Y-%m-%d %H:%M:%S %Z}'.format(datetime) if datetime is not None else '-'
-
-    def shorten(self, str, slen, elen):
-        if len(str) <= (slen + elen):
-            return str
-        else:
-            if slen < 1:
-                return '..%s' % str[len(str) - elen + 2:len(str)]
-            elif elen < 1:
-                return '%s..' % str[0:slen - 2]
-            else:
-                return '%s..%s' % (str[0:slen -1], str[len(str) - elen + 1:len(str)])
-
     def actual_templates_s3_bucket(self):
-        return self.templates_s3_bucket % env
+        return self.templates_s3_bucket % env.__dict__
 
     def actual_templates_s3_prefix(self):
-        return self.templates_s3_prefix % env
+        return self.templates_s3_prefix % env.__dict__
 
     def default_stack_args(self, **kwargs):
         """
@@ -155,8 +155,8 @@ class StackGroup(object):
         self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates, 'st')
         self.__add_fabric_task(namespace, 'list_stacks', self.list_stacks, 'ls')
         self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack, 'ds')
-        self.__add_fabric_task(namespace, 'list_resources', self.list_resources, 'lr')
-        self.__add_fabric_task(namespace, 'list_exports', self.list_exports, 'le')
+        self.__add_fabric_task(namespace, 'list-resources', self.list_resources, 'lr')
+        self.__add_fabric_task(namespace, 'list-exports', self.list_exports, 'le')
         self.__add_fabric_task(namespace, 'dryrun', self.dryrun, 'd')
 
         # Add stack tasks.
@@ -164,7 +164,7 @@ class StackGroup(object):
             for operation in stack_def.get_stack_operations():
                 operation_name = operation.__name__
                 operation.__func__.__doc__ = '%s stack %s.' % (operation_name, stack_def.stack_alias)
-                task_name = '%s_%s' % (operation_name, stack_def.stack_alias)
+                task_name = '%s-%s' % (operation_name, stack_def.stack_alias)
                 self.__add_fabric_task(namespace, task_name, operation)
 
         return self
@@ -178,20 +178,24 @@ class StackGroup(object):
             # 2. Specify environment variable 'AWS_PROFILE'.
             # 3. Default profile.
             profile_name = None
-            if 'Profile' in env:
+            if 'Profile' in env.__dict__:
                 profile_name = env['Profile']
             elif 'AWS_PROFILE' in os.environ:
                 profile_name = os.environ['AWS_PROFILE']
-                print(green('Use AWS Profile is %s. (by Environment variable AWS_PROFILE)' % profile_name, bold = True))
+                print(green(
+                    'Use AWS Profile is %s. (by Environment variable AWS_PROFILE)' % profile_name, bold = True
+                ))
             elif 'AWS_DEFAULT_PROFILE' in os.environ:
                 profile_name = os.environ['AWS_DEFAULT_PROFILE']
-                print(green('Use AWS Profile is %s. (by Environment variable AWS_DEFAULT_PROFILE)' % profile_name, bold = True))
+                print(green(
+                    'Use AWS Profile is %s. (by Environment variable AWS_DEFAULT_PROFILE)' % profile_name, bold = True
+                ))
 
             session = Session(
                 profile_name = profile_name,
-                region_name = env.get('Region'),
-                aws_access_key_id = env.get('AccessKeyId'),
-                aws_secret_access_key = env.get('SecretAccessKey')
+                region_name = env.__dict__.get('Region'),
+                aws_access_key_id = env.__dict__.get('AccessKeyId'),
+                aws_secret_access_key = env.__dict__.get('SecretAccessKey')
             )
             self.__cfn_client = session.client('cloudformation')
         return self.__cfn_client
@@ -199,10 +203,10 @@ class StackGroup(object):
     def cfn_resource(self):
         if self.__cfn_resource is None:
             session = Session(
-                profile_name = env.get('Profile'),
-                region_name = env.get('Region'),
-                aws_access_key_id = env.get('AccessKeyId'),
-                aws_secret_access_key = env.get('SecretAccessKey')
+                profile_name = env.__dict__.get('Profile'),
+                region_name = env.__dict__.get('Region'),
+                aws_access_key_id = env.__dict__.get('AccessKeyId'),
+                aws_secret_access_key = env.__dict__.get('SecretAccessKey')
             )
             self.__cfn_resource = session.resource('cloudformation')
         return self.__cfn_resource
@@ -259,7 +263,7 @@ class StackGroup(object):
 
         :param kwparams: parameters.
         """
-        for param_name, param_value in kwparams.iteritems():
+        for param_name, param_value in kwparams.items():
             env[param_name] = param_value
 
         return self
@@ -270,9 +274,12 @@ class StackGroup(object):
         """
         import webbrowser
         session = boto3.session.Session()
-        webbrowser.open('https://%(region)s.console.aws.amazon.com/cloudformation/home?region=%(region)s#/stacks?filter=active' % dict(
-            region = session.region_name
-        ))
+        webbrowser.open(
+            'https://%(region)s.console.aws.amazon.com/cloudformation/home?region=%(region)s#/stacks?filter=active' %
+            dict(
+                region = session.region_name
+            )
+        )
 
     def validate_template(self, alias_or_template_path):
         """
@@ -280,7 +287,7 @@ class StackGroup(object):
 
         :param alias_or_template_path: Stack alias or Template file relative path.
         """
-        if self.stack_defs.has_key(alias_or_template_path):
+        if alias_or_template_path in self.stack_defs:
             template_path = self.stack_defs[alias_or_template_path].template_path
         else:
             template_path = alias_or_template_path
@@ -290,7 +297,7 @@ class StackGroup(object):
             template_path
         )
         print('Validating template %s...' % template_local_path)
-        local(
+        run(
             "aws cloudformation validate-template --template-body file://%s --output table" % template_local_path
         )
 
@@ -301,19 +308,20 @@ class StackGroup(object):
         """
         s3url = 's3://%s/%s' % (self.actual_templates_s3_bucket(), self.actual_templates_s3_prefix())
         print('Synchronizing templates local %s to %s...' % (self.templates_local_dir, s3url))
-        local('%(Account)s aws %(Profile)s%(Region)s s3 sync %(LocalDir)s %(S3Url)s --delete --exclude "*" --include \"*.yaml\"' % dict(
+        run('%(Account)s aws %(Profile)s%(Region)s s3 sync %(LocalDir)s %(S3Url)s --delete --exclude "*" --include \"*.yaml\"' % dict(
             Account = ' %s AWS_ACCESS_KEY_ID=%s; %s AWS_SECRET_ACCESS_KEY=%s; ' % (
                 'set' if os.name == 'nt' else 'export',
-                env.get('AccessKeyId'),
+                env.__dict__.get('AccessKeyId'),
                 'set' if os.name == 'nt' else 'export',
-                env.get('SecretAccessKey')
-            ) if 'AccessKeyId' in env else '',
-            Profile = ' --profile %s' % env.get('Profile') if 'Profile' in env else '',
-            Region = ' --region %s' % env.get('Region') if 'Region' in env else '',
+                env.__dict__.get('SecretAccessKey')
+            ) if 'AccessKeyId' in env.__dict__ else '',
+            Profile = ' --profile %s' % env.__dict__.get('Profile') if 'Profile' in env.__dict__ else '',
+            Region = ' --region %s' % env.__dict__.get('Region') if 'Region' in env.__dict__ else '',
             LocalDir = self.templates_local_dir,
             S3Url = s3url
         ))
 
+    @hoge
     def list_stacks(self):
         """
         List stacks.
@@ -330,7 +338,8 @@ class StackGroup(object):
                     'ROLLBACK_IN_PROGRESS', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
                     'DELETE_IN_PROGRESS', 'DELETE_FAILED', # 'DELETE_COMPLETE',
                     'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_COMPLETE',
-                    'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE',
+                    'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_FAILED',
+                    'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE',
                     'REVIEW_IN_PROGRESS'],
                 PaginationConfig = {
                     'MaxItems': 500,
@@ -344,7 +353,7 @@ class StackGroup(object):
                 break
 
         # TODO Refactoring.
-        defined_stack_names = Set()
+        defined_stack_names = set()
         defined_stack_aliases = {}
         for stack_def in self.stack_defs.values():
             defined_stack_names.add(stack_def.actual_stack_name())
@@ -370,12 +379,12 @@ class StackGroup(object):
                 if is_in_stack_group(stack_name):
                     table.add_row([
                         # TODO Show Alias at chaining stack.
-                        defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
-                        self.shorten(stack_name, 70, 5),
-                        self.colord_status(summary['StackStatus']),
-                        self.format_datetime(summary['CreationTime']),
-                        self.format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
-                        self.shorten(summary.get('TemplateDescription', ''), 70, 0)
+                        defined_stack_aliases.pop(stack_name) if stack_name in defined_stack_aliases else '',  # pop!
+                        shorten(stack_name, 70, 5),
+                        self.colored_status(summary['StackStatus']),
+                        format_datetime(summary['CreationTime']),
+                        format_datetime(summary['LastUpdatedTime']) if 'LastUpdatedTime' in summary else '-',
+                        shorten(summary.get('TemplateDescription', ''), 70, 0)
                     ])
         # Append stacks that have not been created yet.
         for not_exist_stack_name, not_exist_stack_alias in defined_stack_aliases.items():
@@ -391,13 +400,14 @@ class StackGroup(object):
         print(blue('Stacks:', bold = True))
         print(table)
 
+    @hoge
     def desc_stack(self, alias_or_stackname):
         """
         Describe existing stack.
 
         :param alias_or_stackname: Stack alias or Stack name.
         """
-        if self.stack_defs.has_key(alias_or_stackname):
+        if alias_or_stackname in self.stack_defs:
             stack_name = self.stack_defs[alias_or_stackname].actual_stack_name()
         else:
             stack_name = alias_or_stackname
@@ -414,10 +424,10 @@ class StackGroup(object):
         table = PrettyTable()
         table.add_column('StackName', [stack.stack_name])
         table.align['StackName'] = 'l'
-        table.add_column('Status', [self.colord_status(stack.stack_status)])
-        table.add_column('CreatedTime', [self.format_datetime(stack.creation_time)])
-        table.add_column('UpdatedTime', [self.format_datetime(stack.last_updated_time)])
-        table.add_column('Description', [self.shorten(stack.description, 70, 0)])
+        table.add_column('Status', [self.colored_status(stack.stack_status)])
+        table.add_column('CreatedTime', [format_datetime(stack.creation_time)])
+        table.add_column('UpdatedTime', [format_datetime(stack.last_updated_time)])
+        table.add_column('Description', [shorten(stack.description, 70, 0)])
         print(table)
 
         print(blue('Parameters:', bold = True))
@@ -446,7 +456,7 @@ class StackGroup(object):
                 table.add_row([
                     output['OutputKey'],
                     output['OutputValue'],
-                    self.shorten(output['Description'], 70, 0) if output.has_key('Description') else '-'
+                    shorten(output['Description'], 70, 0) if 'Description' in output else '-'
                 ])
             print(table)
 
@@ -459,11 +469,11 @@ class StackGroup(object):
         # Show latest 20 events.
         for event in list(stack.events.all())[:20]:
             table.add_row([
-                self.format_datetime(event.timestamp),
-                self.colord_status(event.resource_status),
+                format_datetime(event.timestamp),
+                self.colored_status(event.resource_status),
                 event.resource_type,
                 event.logical_resource_id,
-                self.shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
+                shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
             ])
         print(table)
 
@@ -509,16 +519,16 @@ class StackGroup(object):
                         table.add_row([
                             stack_name,
                             summary['LogicalResourceId'],
-                            self.shorten(summary['PhysicalResourceId'], 40, 5),
+                            shorten(summary['PhysicalResourceId'], 40, 5),
                             summary['ResourceType'],
-                            self.colord_status(summary['ResourceStatus']),
-                            self.format_datetime(summary['LastUpdatedTimestamp'])
+                            self.colored_status(summary['ResourceStatus']),
+                            format_datetime(summary['LastUpdatedTimestamp'])
                         ])
             except botocore.exceptions.ClientError:
                 # Ignore this stack if exception occurred.
-              pass
+                pass
 
-        print(blue('Resrouces:', bold = True))
+        print(blue('Resources:', bold = True))
         print(table)
 
     def list_exports(self):
@@ -526,10 +536,10 @@ class StackGroup(object):
         List exports.
         """
         def get_exported_stack_name(export):
-            exportingStackId = export['ExportingStackId']
+            exporting_stack_id = export['ExportingStackId']
             for stack_def in self.stack_defs.values():
                 stack_name = stack_def.actual_stack_name()
-                if stack_name in exportingStackId:  # Contains stack name in exporting stack name.
+                if stack_name in exporting_stack_id:  # Contains stack name in exporting stack name.
                     return stack_name
             return None
 
@@ -574,7 +584,7 @@ class StackGroup(object):
         print(yellow('===== DRY-RUN mode ====='))
 
     def in_dryrun(self):
-        return True if (env.has_key('DryRun') and env.DryRun == True) else False
+        return True if ('DryRun' in env.__dict__ and env.DryRun) else False
 
 
 class StackDef(object):
@@ -586,7 +596,7 @@ class StackDef(object):
         self.kwargs = kwargs
 
     def actual_stack_name(self):
-        return self.stack_name % env
+        return self.stack_name % env.__dict__
 
     def template_s3_url(self):
         return 'https://s3.amazonaws.com/%s/%s/%s' % (
@@ -600,6 +610,7 @@ class StackDef(object):
         copied.update(**kwargs)  # Override default args by specified args.
         return copied
 
+    @hoge
     def create(self, **kwparams):
         # Override Fabric env with task parameter.
         self.stack_group.params(**kwparams)
@@ -613,20 +624,23 @@ class StackDef(object):
         stack_params = []
         for param_def in template['Parameters']:
             param_key = param_def['ParameterKey']
-            if env.has_key(param_key):
+            if param_key in env.__dict__:
                 # Use specified parameter.
-                param_value = env[param_key]
+                param_value = env.__dict__[param_key]
             else:
-                if param_def.has_key('DefaultValue'):
+                if 'DefaultValue' in param_def:
                     default_value = param_def['DefaultValue']
-                    if param_def.has_key('Description'):
+                    if 'Description' in param_def:
                         # Prompt parameter with description, default value.
-                        param_value = prompt('%s? - %s' % (param_key, param_def['Description']), default = default_value)
+                        param_value = prompt(
+                            '%s? - %s' % (param_key, param_def['Description']),
+                            default = default_value
+                        )
                     else:
                         # Prompt parameter with default value.
                         param_value = prompt('%s?' % param_key, default = default_value)
                 else:
-                    if param_def.has_key('Description'):
+                    if 'Description' in param_def:
                         # Prompt parameter with description.
                         param_value = prompt('%s? - %s' % (param_key, param_def['Description']))
                     else:
@@ -634,7 +648,7 @@ class StackDef(object):
                         param_value = prompt('%s?' % param_key)
 
                 if not param_value:
-                    raise Exception('Missing require parameter %s.' % (param_key))
+                    raise Exception('Missing require parameter %s.' % param_key)
 
             stack_params.append({
                 'ParameterKey': param_key,
@@ -726,28 +740,31 @@ class StackDef(object):
         stack_params = []
         for param_def in template['Parameters']:
             param_key = param_def['ParameterKey']
-            if env.has_key(param_key):
+            if param_key in env:
                 # Use specified parameter.
                 param_value = env[param_key]
             else:
                 prev_value = get_previous_param_value(param_key)
                 if prev_value is not None:
-                    if param_def.has_key('Description'):
+                    if 'Description' in param_def:
                         # Prompt parameter with description, previous value.
                         param_value = prompt('%s? - %s' % (param_key, param_def['Description']), default = prev_value)
                     else:
                         # Prompt parameter with previous value.
                         param_value = prompt('%s?' % param_key, default = prev_value)
-                elif param_def.has_key('DefaultValue'):
+                elif 'DefaultValue' in param_def:
                     default_value = param_def['DefaultValue']
-                    if param_def.has_key('Description'):
+                    if 'Description' in param_def:
                         # Prompt parameter with description, default value.
-                        param_value = prompt('%s? - %s' % (param_key, param_def['Description']), default = default_value)
+                        param_value = prompt(
+                            '%s? - %s' % (param_key, param_def['Description']),
+                            default = default_value
+                        )
                     else:
                         # Prompt parameter with default value.
                         param_value = prompt('%s?' % param_key, default = default_value)
                 else:
-                    if param_def.has_key('Description'):
+                    if 'Description' in param_def:
                         # Prompt parameter with description.
                         param_value = prompt('%s? - %s' % (param_key, param_def['Description']))
                     else:
@@ -795,7 +812,7 @@ class StackDef(object):
                 StackName = self.actual_stack_name(),
                 ChangeSetName = changeset_name
             )
-            if change_set.has_key('StatusReason') and 'didn\'t contain changes' in change_set['StatusReason']:
+            if 'StatusReason' in change_set and 'didn\'t contain changes' in change_set['StatusReason']:
                 print(yellow('No changes.'))
             else:
                 self.__show_change_set(change_set)
@@ -835,9 +852,17 @@ class StackDef(object):
 
     @confirm
     def delete(self):
+        def __filter_stack_args_for_delete(**kwargs):
+            accept_arg_names = ['RetainResources', 'RoleARN']
+            filtered = {}
+            for key, value in kwargs.items():
+                if key in accept_arg_names:
+                    filtered[key] = value
+            return filtered
+
         # TODO Async execution.
         # Delete stack.
-        stack_args = self.__filter_stack_args_for_delete(**self.__merge_stack_args(**self.kwargs))
+        stack_args = __filter_stack_args_for_delete(**self.__merge_stack_args(**self.kwargs))
         print('Deleting stack...')
         print('  Stack Name: %s' % self.actual_stack_name())
         print('  Arguments : %s' % stack_args)
@@ -852,14 +877,6 @@ class StackDef(object):
         )
         print('Finish.')
 
-    def __filter_stack_args_for_delete(self, **kwargs):
-        accept_arg_names = ['RetainResources', 'RoleARN']
-        filtered = {}
-        for key, value in kwargs.items():
-            if key in accept_arg_names:
-                filtered[key] = value
-        return filtered
-
     def __show_change_set(self, change_set):
         print(blue('Stack:', bold = True))
         table = PrettyTable()
@@ -867,11 +884,11 @@ class StackDef(object):
         table.align['StackName'] = 'l'
         table.add_column('ChangeSetName', [change_set['ChangeSetName']])
         table.align['ChangeSetName'] = 'l'
-        table.add_column('ChangeSetStatus', [self.stack_group.colord_status(change_set['Status'])])
+        table.add_column('ChangeSetStatus', [self.stack_group.colored_status(change_set['Status'])])
         print(table)
 
         print(blue('Parameters:', bold = True))
-        if change_set.has_key('Parameters') is False:
+        if 'Parameters' in change_set is False:
             print('No parameters.')
         else:
             table = PrettyTable(['Key', 'Value'])
@@ -885,7 +902,7 @@ class StackDef(object):
             print(table)
 
         print(blue('Changes:', bold = True))
-        if change_set.has_key('Changes') is False:
+        if 'Changes' in change_set is False:
             print(yellow('No changes.'))
         else:
             table = PrettyTable(['Action', 'LogicalID', 'PhysicalID', 'ResourceType', 'Replacement'])
@@ -897,9 +914,9 @@ class StackDef(object):
                 table.add_row([
                     resource_change['Action'],
                     resource_change['LogicalResourceId'],
-                    self.stack_group.shorten(resource_change['PhysicalResourceId'], 70, 10) if resource_change.has_key('PhysicalResourceId') else '-',
+                    self.stack_group.shorten(resource_change['PhysicalResourceId'], 70, 10) if 'PhysicalResourceId' in resource_change else '-',
                     resource_change['ResourceType'],
-                    resource_change['Replacement'] if resource_change.has_key('Replacement') else '-'
+                    resource_change['Replacement'] if 'Replacement' in resource_change else '-'
                 ])
             print(table)
 

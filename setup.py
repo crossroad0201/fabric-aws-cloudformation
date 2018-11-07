@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#  -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
@@ -14,7 +13,11 @@ setup(
   packages         = find_packages(),
   install_requires = [
     'fabric>=2.0',
+    'invoke',
+    'invocations',
+    'colorama',
     'boto3',
+    'botocore',
     'prettytable'
   ]
 )
