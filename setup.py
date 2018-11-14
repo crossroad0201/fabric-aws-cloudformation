@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
   name             = 'fabricawscfn',
-  version          = '0.1.1',
+  version          = '0.1.2',
   description      = 'Fabric task generator for AWS CloudFormation.',
   license          = 'MIT',
   author           = 'Yohei TSUJI',
@@ -14,7 +14,7 @@ setup(
   packages         = find_packages(),
   install_requires = [
     'fabric<2.0',
-    'boto3',
+    'boto3>=1.9.43',
     'prettytable'
   ]
 )

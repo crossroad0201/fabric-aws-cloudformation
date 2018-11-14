@@ -81,7 +81,7 @@ class StackGroup(object):
         env.NeedConfirm = True
         env.ConfirmMessage = confirm_message
 
-    def colord_status(self, status):
+    def colored_status(self, status):
         if status.endswith('_COMPLETE'):
             return green(status)
         if status.endswith('_IN_PROGRESS'):
@@ -91,19 +91,32 @@ class StackGroup(object):
         else:
             return status
 
+    def colored_drift_status(self, status):
+        if status == 'IN_SYNC':
+            return green(status)
+        elif status == 'DRIFTED':
+            return yellow(status)
+        elif status == 'UNKNOWN':
+            return red(status)
+        else:
+            return status
+
     def format_datetime(self, datetime):
         return '{0:%Y-%m-%d %H:%M:%S %Z}'.format(datetime) if datetime is not None else '-'
 
     def shorten(self, str, slen, elen):
-        if len(str) <= (slen + elen):
-            return str
-        else:
-            if slen < 1:
-                return '..%s' % str[len(str) - elen + 2:len(str)]
-            elif elen < 1:
-                return '%s..' % str[0:slen - 2]
+        if str:
+            if len(str) <= (slen + elen):
+                return str
             else:
-                return '%s..%s' % (str[0:slen -1], str[len(str) - elen + 1:len(str)])
+                if slen < 1:
+                    return '..%s' % str[len(str) - elen + 2:len(str)]
+                elif elen < 1:
+                    return '%s..' % str[0:slen - 2]
+                else:
+                    return '%s..%s' % (str[0:slen -1], str[len(str) - elen + 1:len(str)])
+        else:
+            return str
 
     def actual_templates_s3_bucket(self):
         return self.templates_s3_bucket % env
@@ -155,6 +168,7 @@ class StackGroup(object):
         self.__add_fabric_task(namespace, 'sync_templates', self.sync_templates, 'st')
         self.__add_fabric_task(namespace, 'list_stacks', self.list_stacks, 'ls')
         self.__add_fabric_task(namespace, 'desc_stack', self.desc_stack, 'ds')
+        self.__add_fabric_task(namespace, 'detect_drift', self.detect_drift, 'dd')
         self.__add_fabric_task(namespace, 'list_resources', self.list_resources, 'lr')
         self.__add_fabric_task(namespace, 'list_exports', self.list_exports, 'le')
         self.__add_fabric_task(namespace, 'dryrun', self.dryrun, 'd')
@@ -357,7 +371,7 @@ class StackGroup(object):
                     return True
             return False
 
-        table = PrettyTable(['StackAlias', 'StackName', 'Status', 'CreatedTime', 'UpdatedTime', 'Description'])
+        table = PrettyTable(['StackAlias', 'StackName', 'Status', 'DriftStatus', 'CreatedTime', 'UpdatedTime', 'Description'])
         table.align['StackAlias'] = 'l'
         table.align['StackName'] = 'l'
         table.align['Description'] = 'l'
@@ -372,7 +386,8 @@ class StackGroup(object):
                         # TODO Show Alias at chaining stack.
                         defined_stack_aliases.pop(stack_name) if defined_stack_aliases.has_key(stack_name) else '', # pop!
                         self.shorten(stack_name, 70, 5),
-                        self.colord_status(summary['StackStatus']),
+                        self.colored_status(summary['StackStatus']),
+                        self.colored_drift_status(summary['DriftInformation']['StackDriftStatus']),
                         self.format_datetime(summary['CreationTime']),
                         self.format_datetime(summary['LastUpdatedTime']) if summary.has_key('LastUpdatedTime') else '-',
                         self.shorten(summary.get('TemplateDescription', ''), 70, 0)
@@ -383,6 +398,7 @@ class StackGroup(object):
                 not_exist_stack_alias,
                 not_exist_stack_name,
                 'Not created',
+                '-',
                 '-',
                 '-',
                 '-'
@@ -414,9 +430,11 @@ class StackGroup(object):
         table = PrettyTable()
         table.add_column('StackName', [stack.stack_name])
         table.align['StackName'] = 'l'
-        table.add_column('Status', [self.colord_status(stack.stack_status)])
+        table.add_column('Status', [self.colored_status(stack.stack_status)])
+        table.add_column('DriftStatus', [self.colored_drift_status(stack.drift_information['StackDriftStatus'])])
         table.add_column('CreatedTime', [self.format_datetime(stack.creation_time)])
         table.add_column('UpdatedTime', [self.format_datetime(stack.last_updated_time)])
+        table.add_column('DriftDetectedTime', [self.format_datetime(stack.drift_information['LastCheckTimestamp'])])
         table.add_column('Description', [self.shorten(stack.description, 70, 0)])
         print(table)
 
@@ -460,14 +478,115 @@ class StackGroup(object):
         for event in list(stack.events.all())[:20]:
             table.add_row([
                 self.format_datetime(event.timestamp),
-                self.colord_status(event.resource_status),
+                self.colored_status(event.resource_status),
                 event.resource_type,
                 event.logical_resource_id,
                 self.shorten(event.resource_status_reason, 70, 0) if event.resource_status_reason is not None else ''
             ])
         print(table)
 
-    # TODO Bulk create all stacks.
+    def detect_drift(self, alias_or_stackname):
+        """
+        List detected drifts. (Different resource property between Stack and Actual resource).
+
+        :param alias_or_stackname: Stack alias or Stack name.
+        """
+
+        if self.stack_defs.has_key(alias_or_stackname):
+            stack_name = self.stack_defs[alias_or_stackname].actual_stack_name()
+        else:
+            stack_name = alias_or_stackname
+
+        def detect_drift(_stack_name):
+            print('Detecting draft for the stack %s...' % stack_name)
+            result = self.cfn_client().detect_stack_drift(
+                StackName = _stack_name
+            )
+            return result['StackDriftDetectionId']
+
+        def wait_for_drift_to_detected(_stack_name, drift_id):
+            def get_drift_status():
+                return self.cfn_client().describe_stack_drift_detection_status(
+                    StackDriftDetectionId = drift_id
+                )
+
+            result = get_drift_status()
+
+            table = PrettyTable()
+            table.add_column('StackName', [_stack_name])
+            table.align['StackName'] = 'l'
+            table.add_column('DriftDetectionId', [result['StackDriftDetectionId']])
+            table.align['DriftDetectionId'] = 'l'
+            table.add_column('DetectionStatedTime', [result['Timestamp']])
+            print(blue('DriftDetection:', bold = True))
+            print(table)
+
+            print('')
+            print('Waiting for detection to complete...')
+            while result['DetectionStatus'] == 'DETECTION_IN_PROGRESS':
+                time.sleep(10)
+                result = get_drift_status()
+
+        def show_drifts(_stack_name):
+            def colored_status(s):
+                if s == 'IN_SYNC':
+                    return green(s)
+                elif s == 'MODIFIED':
+                    return yellow(s)
+                elif s == 'DELETED':
+                    return red(s)
+                else:
+                    return s
+
+            def colored_diff(s):
+                if s == 'ADD':
+                    return blue(s)
+                elif s == 'REMOVE':
+                    return red(s)
+                else:
+                    return yellow(s)
+
+            result = self.cfn_client().describe_stack_resource_drifts(
+                StackName = _stack_name
+            )
+
+            table = PrettyTable(['PhysicalID', 'Type', 'Status', 'Property', 'Diff', 'Expected', 'Actual'])
+            table.align['PhysicalID'] = 'l'
+            table.align['Type'] = 'l'
+            table.align['Property'] = 'l'
+            table.align['Expected'] = 'l'
+            table.align['Actual'] = 'l'
+            for drift in sorted(result['StackResourceDrifts'], key = lambda x: x['PhysicalResourceId'], reverse = True):
+                if drift['PropertyDifferences']:
+                    for diff in drift['PropertyDifferences']:
+                        table.add_row([
+                            drift['PhysicalResourceId'],
+                            drift['ResourceType'],
+                            colored_status(drift['StackResourceDriftStatus']),
+                            diff['PropertyPath'],
+                            colored_diff(diff['DifferenceType']),
+                            diff['ExpectedValue'],
+                            diff['ActualValue'],
+                        ])
+                else:
+                    table.add_row([
+                        drift['PhysicalResourceId'],
+                        drift['ResourceType'],
+                        colored_status(drift['StackResourceDriftStatus']),
+                        '-',
+                        '-',
+                        '-',
+                        '-',
+                    ])
+            print(blue('Drifts:', bold = True))
+            print(table)
+
+        drift_id = detect_drift(stack_name)
+        wait_for_drift_to_detected(stack_name, drift_id)
+        show_drifts(stack_name)
+
+
+# TODO Bulk create all stacks.
     # TODO Bulk update all stacks.
     # TODO Bulk delete all stacks.
 
@@ -511,7 +630,7 @@ class StackGroup(object):
                             summary['LogicalResourceId'],
                             self.shorten(summary['PhysicalResourceId'], 40, 5),
                             summary['ResourceType'],
-                            self.colord_status(summary['ResourceStatus']),
+                            self.colored_status(summary['ResourceStatus']),
                             self.format_datetime(summary['LastUpdatedTimestamp'])
                         ])
             except botocore.exceptions.ClientError:
@@ -867,7 +986,7 @@ class StackDef(object):
         table.align['StackName'] = 'l'
         table.add_column('ChangeSetName', [change_set['ChangeSetName']])
         table.align['ChangeSetName'] = 'l'
-        table.add_column('ChangeSetStatus', [self.stack_group.colord_status(change_set['Status'])])
+        table.add_column('ChangeSetStatus', [self.stack_group.colored_status(change_set['Status'])])
         print(table)
 
         print(blue('Parameters:', bold = True))

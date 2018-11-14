@@ -8,20 +8,20 @@ You will be able to manipulate the CloudFormation stack with the CUI.
 ```bash
 $ fab list_stacks
 Stacks:
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
-| StackAlias | StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
-| foo        | fabricawscfn-dev-foo | CREATE_COMPLETE | 2017-03-05 04:35:12.823000+00:00 |      -      | Foo bucket. |
-| bar        | fabricawscfn-dev-bar |   Not created   |                -                 |      -      | -           |
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
+| StackAlias | StackName            |      Status     | DriftStatus |           CreatedTime            | UpdatedTime | Description |
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
+| foo        | fabricawscfn-dev-foo | CREATE_COMPLETE |   DRIFTED   | 2017-03-05 04:35:12.823000+00:00 |      -      | Foo bucket. |
+| bar        | fabricawscfn-dev-bar |   Not created   |     -       |                -                 |      -      | -           |
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
 ```
 
 # Setup
 
 ## Requirement
 
-* Python 2.x
-* [Fabric](http://www.fabfile.org)
+* Python 2.x  (**Do not support Python 3.**)
+* [Fabric 1.x](http://www.fabfile.org)  (**Do not support Fabric2.**)
 * [AWS CLI](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-set-up.html)
 
 ## Install
@@ -146,12 +146,14 @@ Available commands:
     delete_bar         delete stack bar.
     delete_foo         delete stack foo.
     desc_stack         Describe existing stack.
+    detect_drift       List detected drifts. (Different resource property between Stack and Actual resource).
     dryrun             Turn on DRY-RUN mode for create_xxx, update_xxx task.
     env_on             Set environment.(Default dev)
     list_exports       List exports.
     list_resources     List existing stack resources.
     list_stacks        List stacks.
     params             Set parameters. (Applies to all tasks)
+    profile            Set AWS Profile. (Default use AWS credentials default profile)
     region             Set AWS Region. (Default use AWS credentials default p...
     sync_templates     Synchronize templates local dir to S3 bucket.
     update_bar         update stack bar.
@@ -172,12 +174,12 @@ Show stacks list.
 ```bash
 $ fab list_stacks
 Stacks:
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
-| StackAlias | StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
-| foo        | fabricawscfn-dev-foo | CREATE_COMPLETE | 2017-03-05 04:35:12.823000+00:00 |      -      | Foo bucket. |
-| bar        | fabricawscfn-dev-bar |   Not created   |                -                 |      -      | -           |
-+------------+----------------------+-----------------+----------------------------------+-------------+-------------+
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
+| StackAlias | StackName            |      Status     | DriftStatus |           CreatedTime            | UpdatedTime | Description |
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
+| foo        | fabricawscfn-dev-foo | CREATE_COMPLETE |   DRIFTED   | 2017-03-05 04:35:12.823000+00:00 |      -      | Foo bucket. |
+| bar        | fabricawscfn-dev-bar |   Not created   |     -       |                -                 |      -      | -           |
++------------+----------------------+-----------------+-------------+----------------------------------+-------------+-------------+
 ```
 
 ### `desc_stack:[StackAlias or StackName]`
@@ -187,11 +189,11 @@ Show stack detail.
 ```bash
 $ fab desc_stack:foo
 Stack:
-+----------------------+-----------------+----------------------------------+-------------+-------------+
-| StackName            |      Status     |           CreatedTime            | UpdatedTime | Description |
-+----------------------+-----------------+----------------------------------+-------------+-------------+
-| fabricawscfn-dev-foo | CREATE_COMPLETE | 2017-03-05 04:35:12.823000+00:00 |     None    | Foo bucket. |
-+----------------------+-----------------+----------------------------------+-------------+-------------+
++----------------------+-----------------+-------------+----------------------------------+-------------+----------------------------------+-------------+
+| StackName            |      Status     | DriftStatus |           CreatedTime            | UpdatedTime |        DriftDetectedTime         | Description |
++----------------------+-----------------+-------------+----------------------------------+-------------+----------------------------------+-------------+
+| fabricawscfn-dev-foo | CREATE_COMPLETE |   DRIFTED   | 2017-03-05 04:35:12.823000+00:00 |      -      | 2017-03-05 04:35:12.823000+00:00 | Foo bucket. |
++----------------------+-----------------|-------------+----------------------------------+-------------+----------------------------------+-------------+
 Parameters:
 +---------+--------+
 | Key     | Value  |
@@ -212,10 +214,10 @@ Events(last 20):
 +----------------------------------+--------------------+----------------------------+----------------------+-----------------------------+
 | Timestamp                        |       Status       | Type                       | LogicalID            | StatusReason                |
 +----------------------------------+--------------------+----------------------------+----------------------+-----------------------------+
-| 2017-03-05 04:35:55.694000+00:00 |  CREATE_COMPLETE   | AWS::CloudFormation::Stack | fabricawscfn-dev-foo | None                        |
-| 2017-03-05 04:35:53.009000+00:00 |  CREATE_COMPLETE   | AWS::S3::Bucket            | Bucket               | None                        |
+| 2017-03-05 04:35:55.694000+00:00 |  CREATE_COMPLETE   | AWS::CloudFormation::Stack | fabricawscfn-dev-foo |                             |
+| 2017-03-05 04:35:53.009000+00:00 |  CREATE_COMPLETE   | AWS::S3::Bucket            | Bucket               |                             |
 | 2017-03-05 04:35:32.308000+00:00 | CREATE_IN_PROGRESS | AWS::S3::Bucket            | Bucket               | Resource creation Initiated |
-| 2017-03-05 04:35:31.102000+00:00 | CREATE_IN_PROGRESS | AWS::S3::Bucket            | Bucket               | None                        |
+| 2017-03-05 04:35:31.102000+00:00 | CREATE_IN_PROGRESS | AWS::S3::Bucket            | Bucket               |                             |
 | 2017-03-05 04:35:12.823000+00:00 | CREATE_IN_PROGRESS | AWS::CloudFormation::Stack | fabricawscfn-dev-foo | User Initiated              |
 +----------------------------------+--------------------+----------------------------+----------------------+-----------------------------+
 ```
@@ -334,6 +336,12 @@ $ fab force update_bar delete_foo
 Usage see [example/fabfile.py](./example/fabfile.py).
 
 # Change log
+
+### 2018/11/14 - Ver.0.1.2
+
+* **\[UPDATE]** Supports [drift detection](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift.html) .
+  * Added `detect_drift` task.
+  * Show detect status on `list_stacks` and `describe_stack` tasks.
 
 ### 2018/09/27 - Ver.0.1.1
 
