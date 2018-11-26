@@ -337,6 +337,10 @@ Usage see [example/fabfile.py](./example/fabfile.py).
 
 # Change log
 
+### 2018/11/15 - Ver.0.1.3
+
+* **\[FIX]** Fix KeyError at `describe_stack` task if detected drift does not exists.
+
 ### 2018/11/14 - Ver.0.1.2
 
 * **\[UPDATE]** Supports [drift detection](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-drift.html) .
