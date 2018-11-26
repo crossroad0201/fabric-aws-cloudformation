@@ -24,6 +24,13 @@ Stacks:
 * [Fabric 1.x](http://www.fabfile.org)  (**Do not support Fabric2.**)
 * [AWS CLI](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-set-up.html)
 
+:bangbang::bangbang:**No plans to support Python 3.x and Fabric 2.x for the following reasons.**:bangbang::bangbang:
+* Could not keep concept and compatibility.
+* Keyword args can not be use for task parameter.
+
+Recommended to switch Python environment using [pyenv](https://github.com/pyenv/pyenv) etc.
+
+
 ## Install
 
 Install `fabricawscfn` (and [Dependencies](./setup.py)) via pip.
