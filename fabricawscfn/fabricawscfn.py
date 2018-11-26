@@ -434,7 +434,7 @@ class StackGroup(object):
         table.add_column('DriftStatus', [self.colored_drift_status(stack.drift_information['StackDriftStatus'])])
         table.add_column('CreatedTime', [self.format_datetime(stack.creation_time)])
         table.add_column('UpdatedTime', [self.format_datetime(stack.last_updated_time)])
-        table.add_column('DriftDetectedTime', [self.format_datetime(stack.drift_information['LastCheckTimestamp'])])
+        table.add_column('DriftDetectedTime', [self.format_datetime(stack.drift_information['LastCheckTimestamp']) if 'LastCheckTimestamp' in stack.drift_information else '-'])
         table.add_column('Description', [self.shorten(stack.description, 70, 0)])
         print(table)
 
